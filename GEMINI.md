@@ -24,10 +24,12 @@ Toda a arquitetura, regras de negócio e especificações detalhadas do projeto 
 3. **Host Agnóstico**: O Host gerencia apenas infraestrutura, mensageria serial e timers. Regras de jogo residem unicamente em `apps/api/src/modules/games/<game>/`.
 4. **TDD Rigoroso & Cobertura**: Ciclo Red → Green → Refactor obrigatório no motor de jogo e workers seriais. Mínimo inegociável de **90% no backend** e **85% no frontend**.
 5. **Modo Strict Total**: Proibido uso de `any` em todo o monorepo.
-6. **Estratégia Git & Worktrees**: Novas fases e funcionalidades são desenvolvidas em branches dedicadas (`feat/<nome>`). Subagentes usam modo `inherit` no fluxo sequencial e `branch` (Git Worktree isolado) para spikes. A branch `master` deve permanecer sempre verde e protegida por `./scripts/verify.sh`.
-7. **Graphify First & Manutenção de Grafo**: Toda pesquisa sobre arquitetura, relações entre módulos e fluxo de execução deve consultar o grafo de conhecimento em `graphify-out/` (`graphify query`, `graphify explain`, `graphify path`) antes de qualquer varredura genérica com grep/find. Após alterar arquivos de código, o grafo deve ser mantido atualizado (`graphify update .`).
+6. **Estratégia Git, Worktrees & Paralelismo Inteligente**: Novas fases e funcionalidades são desenvolvidas em branches dedicadas (`feat/<nome>`). Subagentes usam modo `inherit` no fluxo de construção e `branch` (Git Worktree isolado) para spikes. Como o monorepo adota Zero Shared Package, `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) PODEM e DEVEM rodar em paralelo no mesmo chamado de `invoke_subagent` quando atuam em seus diretórios isolados, reduzindo o tempo de entrega pela metade.
+7. **Graphify First & Manutenção de Grafo**: Toda pesquisa sobre arquitetura, relações entre módulos e fluxo de execução deve consultar o grafo de conhecimento em `graphify-out/` (`graphify query`, `graphify explain`, `graphify path`) antes de qualquer varredura genérica com grep/find. O grafo é sincronizado automaticamente a cada início de turno (`graphify update .`).
 8. **Instalação Canônica via CLI**: Proibido editar `package.json` manualmente para adicionar ou remover pacotes. Toda dependência DEVE ser instalada via CLI pnpm com filtro explícito de workspace (`pnpm --filter <app> add [-D] <pacote>`), garantindo integridade do `pnpm-lock.yaml` e validação imediata de peer dependencies.
-9. **Orquestração Mandatória de Subagentes**: O agente primário do chat atua EXCLUSIVAMENTE como Orquestrador. Toda implementação técnica, criação de código e testes DEVE ser delegada aos subagentes especializados (`codebase-researcher`, `backend-builder`, `frontend-builder`, `test-verifier`, `implementation-validator`) via ferramenta `invoke_subagent`. Proibida a implementação monolítica direta no chat principal.
+9. **Orquestração Mandatória de Subagentes (Padrão Boost)**: O agente primário do chat atua EXCLUSIVAMENTE como Orquestrador. Toda implementação técnica, criação de código e testes DEVE ser delegada aos subagentes especializados (`codebase-researcher`, `backend-builder`, `frontend-builder`, `test-verifier`, `implementation-validator`) via ferramenta `invoke_subagent`. Proibida a implementação monolítica direta no chat principal.
+10. **Zero Pre-work & Planejamento Ágil**: O Orquestrador planeja usando o Grafo de Conhecimento (`graphify query`) e redige a especificação técnica em até 2 minutos, sem varrer dezenas de arquivos manualmente antes da delegação.
+11. **Ritual Obrigatório de Fechamento (/learn)**: Ao término do Gate 3 e homologação bem-sucedida de qualquer fase/feature, o agente DEVE disparar o protocolo `/learn` para consolidar novas regras e aprendizados perpétuos no `GEMINI.md`.
 
 ---
 
@@ -35,12 +37,13 @@ Toda a arquitetura, regras de negócio e especificações detalhadas do projeto 
 
 1. **NUNCA commitar segredos**: `.env`, `.pem`, `.key`, `secrets.json` ou credenciais de banco (fiscalizado pelo pre-commit hook).
 2. **NUNCA alterar configurações de qualidade sem permissão**: `tsconfig.json`, `eslint.config.js` e `vitest.config.ts` são protegidos pelo hook `guard_protected_files.py`.
-3. **NUNCA rodar agentes de escrita em paralelo**: construtores de backend e frontend rodam sequencialmente para evitar conflitos de código.
+3. **NUNCA rodar agentes de escrita concorrentes em arquivos compartilhados**: arquivos da raiz (`docker-compose.yml`, `package.json` raiz) são editados sequencialmente. O paralelismo é exclusivo para workspaces isolados (`apps/api` vs `apps/web`).
 4. **NUNCA misturar lógica de jogo no Host**: novas regras pertencem a `apps/api/src/modules/games/<game>/`, nunca a rotas Fastify ou executors genéricos.
 5. **NUNCA usar `any`**: TypeScript em modo strict em todos os arquivos.
 6. **NUNCA fazer varredura manual cega**: Proibido ler dezenas de arquivos com `list_dir` e `view_file` para mapear dependências quando `graphify query` fornece os caminhos de forma instantânea e cirúrgica.
 7. **NUNCA editar `package.json` manualmente para instalar dependências**: Sempre usar o comando de CLI `pnpm --filter <app> add ...`.
 8. **NUNCA implementar código diretamente no chat principal**: Toda escrita de código DEVE ser delegada ao subagente correspondente (`backend-builder` ou `frontend-builder`) via `invoke_subagent`.
+9. **NUNCA realizar pré-leitura exaustiva de arquivos no planejamento**: O Orquestrador deve delegar o aprofundamento aos subagentes.
 
 ---
 

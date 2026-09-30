@@ -22,12 +22,15 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
 5. **Seleção de Modelos Otimizada**:
    - `flash` / `flash_lite`: Pesquisa inicial, varredura de código, mapeamento de dependências e leitura leve.
    - `flash` (High Effort / Thinking) ou `inherit`: Planejamento, especificações, implementação de código (TDD) e validação de qualidade, combinando máxima velocidade de execução com raciocínio profundo (*high effort thinking*).
-6. **Escrita Estritamente Sequencial**:
-   - Builders (`backend-builder` → `frontend-builder` → `test-verifier`) **nunca rodam em paralelo**. Paralelismo é reservado unicamente a tarefas de leitura e auditoria.
+6. **Paralelismo Inteligente por Workspace**:
+   - Devido ao desacoplamento estrito (*Zero Shared Package*), builders que atuam em diretórios completamente isolados (`apps/api` e `apps/web`) **PODEM e DEVEM ser disparados em paralelo** na mesma chamada de `invoke_subagent`, reduzindo o tempo de entrega pela metade.
+   - Serialização é reservada apenas para modificações em arquivos compartilhados da raiz (`docker-compose.yml`, `package.json` raiz) e para a validação final da suíte (`test-verifier`).
 7. **Estratégia de Workspace & Git Worktrees**:
-   - **Padrão Sequencial (`Workspace: inherit`)**: Usado no dia a dia da fábrica para que cada builder receba o código da etapa anterior sem atrito ou necessidade de merge.
+   - **Padrão Sequencial/Paralelo (`Workspace: inherit`)**: Usado no dia a dia da fábrica para que cada builder receba o código da etapa anterior sem atrito ou necessidade de merge.
    - **Spikes & Provas de Conceito (`Workspace: branch`)**: Tarefas experimentais arriscadas criam automaticamente um Git Worktree temporário isolado, destruído com zero resíduo caso a abordagem seja descartada.
    - **Fluxo de Branches de Feature**: O desenvolvimento ocorre em branch de feature (`feat/<nome-da-fase>`), preservando a `master` sempre verde. O merge ocorre após o Gate 3 e a aprovação no `./scripts/verify.sh`.
+8. **Zero Pre-work no Planejamento (Padrão Boost)**:
+   - O Orquestrador planeja usando o Grafo de Conhecimento (`graphify query`) e redige a especificação técnica em até 2 minutos, sem inspecionar dezenas de arquivos manualmente antes da delegação.
 
 ---
 
@@ -54,21 +57,24 @@ flowchart TD
     FASE1 --> DECISAO_CHECK{Há ambiguidades ou trade-offs de design?}
     
     DECISAO_CHECK -- "Sim" --> GRILL_ME[Protocolo /grill-me: Entrevista Interativa via ask_question]
-    DECISAO_CHECK -- "Não" --> FASE2[2. Story & Spec Writer: /plan + codebase-design]
+    DECISAO_CHECK -- "Não" --> FASE2[2. Story & Spec Writer: /plan + Zero Pre-work]
     GRILL_ME --> FASE2
     
     FASE2 --> GATE1{Gate Humano 1 & 2: Aprovação do Plano?}
     GATE1 -- "Ajustes Solicitados" --> FASE2
-    GATE1 -- "Aprovado" --> FASE3_BE[3.1. Backend Builder: tdd + ponytail]
+    GATE1 -- "Aprovado" --> FASE3_PARALLEL["3. Invocação Paralela (invoke_subagent com 2 builders)"]
     
-    FASE3_BE --> FASE3_FE[3.2. Frontend Builder: shadcn + frontend-design]
-    FASE3_FE --> FASE3_TEST[3.3. Test Verifier: tdd + validação de suites]
+    FASE3_PARALLEL --> FASE3_BE[3.1. Backend Builder: apps/api/]
+    FASE3_PARALLEL --> FASE3_FE[3.2. Frontend Builder: apps/web/]
+    
+    FASE3_BE --> FASE3_TEST[3.3. Test Verifier: verify.sh + regressão]
+    FASE3_FE --> FASE3_TEST
     
     FASE3_TEST --> FASE4[4. Implementation Validator: code-review 2 eixos + ponytail-review]
     FASE4 --> CHECK_FAIL{Divergência Crítica?}
-    CHECK_FAIL -- "Sim" --> FASE3_BE
+    CHECK_FAIL -- "Sim" --> FASE3_PARALLEL
     CHECK_FAIL -- "Não" --> GATE3{Gate Humano 3: Homologação Final}
-    GATE3 -- "Aprovado" --> COMMIT([Conclusão / Commit Seguro])
+    GATE3 -- "Aprovado" --> FASE5["5. Fechamento Contínuo (/learn) & Commit"]
 ```
 
 ---
@@ -120,8 +126,25 @@ Se durante a pesquisa ou levantamento surgirem requisitos ambíguos, bifurcaçõ
 
 ---
 
-### Fase 3: Construção Sequencial (Builders)
-Execute os builders **estritamente em sequência**:
+### Fase 3: Construção Paralela por Workspace (Builders)
+Graças ao desacoplamento estrito (*Zero Shared Package*), `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) são disparados **simultaneamente em paralelo** na mesma chamada de `invoke_subagent`.
+
+#### 📝 Template Canônico de Despacho (Padrão Boost)
+Todo subagente DEVE receber um prompt estruturado contendo:
+```markdown
+**Task**: [Instrução do usuário verbatim]
+
+**Additional Context**:
+- Repositório: <caminho> | Branch: <branch>
+- Especificação: docs/plans/<slug>.md e implementation_plan.md
+- Invariantes: GEMINI.md (Zero Shared Package, Strict TS, CLI pnpm)
+- Skills Ativas: Siga as diretrizes de [tdd, solid, ponytail, shadcn]
+
+**Escopo a Implementar**:
+1. Arquivos, portas e contratos específicos do workspace.
+2. Protocolos de qualidade (TDD Red-Green, Zod nas bordas).
+3. Comandos de teste (pnpm --filter <app> test, ./scripts/verify.sh).
+```
 
 #### 3.1. `backend-builder` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `tdd`, `solid`, `ponytail`, `codebase-design`.
