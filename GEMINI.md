@@ -22,6 +22,7 @@ Toda a arquitetura, regras de negócio e especificações detalhadas do projeto 
 3. **Host Agnóstico**: O Host gerencia apenas infraestrutura, mensageria serial e timers. Regras de jogo residem unicamente em `apps/api/src/modules/games/<game>/`.
 4. **TDD Rigoroso & Cobertura**: Ciclo Red → Green → Refactor obrigatório no motor de jogo e workers seriais. Mínimo inegociável de **90% no backend** e **85% no frontend**.
 5. **Modo Strict Total**: Proibido uso de `any` em todo o monorepo.
+6. **Estratégia Git & Worktrees**: Novas fases e funcionalidades são desenvolvidas em branches dedicadas (`feat/<nome>`). Subagentes usam modo `inherit` no fluxo sequencial e `branch` (Git Worktree isolado) para spikes. A branch `master` deve permanecer sempre verde e protegida por `./scripts/verify.sh`.
 
 ---
 

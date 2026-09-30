@@ -24,6 +24,10 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
    - `flash` (High Effort / Thinking) ou `inherit`: Planejamento, especificações, implementação de código (TDD) e validação de qualidade, combinando máxima velocidade de execução com raciocínio profundo (*high effort thinking*).
 6. **Escrita Estritamente Sequencial**:
    - Builders (`backend-builder` → `frontend-builder` → `test-verifier`) **nunca rodam em paralelo**. Paralelismo é reservado unicamente a tarefas de leitura e auditoria.
+7. **Estratégia de Workspace & Git Worktrees**:
+   - **Padrão Sequencial (`Workspace: inherit`)**: Usado no dia a dia da fábrica para que cada builder receba o código da etapa anterior sem atrito ou necessidade de merge.
+   - **Spikes & Provas de Conceito (`Workspace: branch`)**: Tarefas experimentais arriscadas criam automaticamente um Git Worktree temporário isolado, destruído com zero resíduo caso a abordagem seja descartada.
+   - **Fluxo de Branches de Feature**: O desenvolvimento ocorre em branch de feature (`feat/<nome-da-fase>`), preservando a `master` sempre verde. O merge ocorre após o Gate 3 e a aprovação no `./scripts/verify.sh`.
 
 ---
 
