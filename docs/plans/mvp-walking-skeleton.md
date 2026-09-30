@@ -23,44 +23,45 @@ tiktok-gamer-lives/
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   └── src/
-│   │       ├── index.ts        # Ponto de entrada e bootstrap Fastify
-│   │       ├── config/
-│   │       │   └── env.ts      # Variáveis de ambiente validadas com Zod
-│   │       ├── contracts/      # Contratos genéricos da plataforma (INTERNOS ao backend)
-│   │       │   ├── engine.ts   # GameModule, GameEngine, GameInputMapper, GameProjection, TimerRequest
-│   │       │   ├── ingress.ts  # CommentInteraction, GiftInteraction, ConnectionStatus
-│   │       │   └── session.ts  # SessionState, SessionConfig, SnapshotEnvelope
-│   │       ├── games/          # Módulos de jogos isolados
-│   │       │   └── axb/        # Implementação do jogo A x B
-│   │       │       ├── types.ts       # AxBState, AxBCommand, AxBProjection, AxBConfig
-│   │       │       ├── schema.ts      # Schemas Zod de configuração do A x B
-│   │       │       ├── constants.ts   # Catálogo de presentes TikTok + defaults de meta/cooldown
-│   │       │       ├── engine.ts      # Regras A x B (cooldown, pontos, meta, intervalo)
-│   │       │       ├── mapper.ts      # Tradutor de chat e presentes para comandos A x B
-│   │       │       ├── projection.ts  # Projeção de placares das torres e times
-│   │       │       ├── __tests__/     # Testes unitários TDD das regras RG-01 a RG-12
-│   │       │       └── index.ts       # Exportação do AxBGameModule
-│   │       ├── core/           # Núcleo genérico da plataforma
-│   │       │   ├── session/    # Controle de ciclo de vida (preparada, ativa, pausada, encerrada)
-│   │       │   ├── executor/   # Executor serial, transações atômicas e timers
-│   │       │   └── registry/   # GameRegistry (registro estático de módulos de jogos)
-│   │       ├── adapters/       # Adaptadores de infraestrutura (Hexagonal)
-│   │       │   ├── tiktok/     # Adaptador tiktok-live-connector
-│   │       │   ├── simulator/  # Adaptador de tráfego sintético e rajada CA-11
-│   │       │   └── socket/     # Adaptador de publicação Socket.IO
-│   │       ├── routes/         # Endpoints Fastify REST
-│   │       │   ├── session.ts  # /api/session/* (CRUD, pausar, retomar, encerrar)
-│   │       │   ├── simulator.ts # /api/simulator/* (injeção de eventos)
-│   │       │   └── tiktok.ts   # /api/tiktok/* (conectar/desconectar live)
-│   │       ├── db/             # Drizzle ORM + PostgreSQL
-│   │       │   ├── schema.ts   # Tabelas: users, sessions, accounts, game_sessions, interactions, game_commands, game_snapshots, game_rounds
-│   │       │   └── index.ts    # Conexão pool e Drizzle client com auto-migração
-│   │       ├── queues/         # BullMQ Workers
-│   │       │   ├── ingress-worker.ts
-│   │       │   ├── index.ts
-│   │       │   └── __tests__/
-│   │       └── auth/           # Better Auth (email + senha) com Drizzle adapter
-│   │           └── index.ts
+│   │       ├── index.ts        # Inicialização do processo
+│   │       ├── app.ts          # Montagem Fastify, handler de erros e OpenAPI
+│   │       ├── contracts/      # SPI e tipos internos ao backend
+│   │       │   ├── engine.ts
+│   │       │   ├── ingress.ts
+│   │       │   └── session.ts
+│   │       ├── common/         # Configuração e Host agnóstico a jogos
+│   │       │   ├── config/env.ts
+│   │       │   ├── domain/errors/
+│   │       │   ├── registry/game-registry.ts
+│   │       │   ├── executor/
+│   │       │   │   ├── application/usecases/process-game-command.usecase.ts
+│   │       │   │   ├── application/repositories/
+│   │       │   │   └── infrastructure/   # Worker e repositórios Drizzle
+│   │       │   ├── timers/
+│   │       │   └── infrastructure/
+│   │       │       ├── http/            # Health, erros e docs da API
+│   │       │       ├── database/drizzle/ # Cliente, schema e migrações
+│   │       │       ├── queue/           # Conexão Redis e filas BullMQ
+│   │       │       └── socket/          # Publicação Socket.IO
+│   │       └── modules/
+│   │           ├── games/axb/          # Engine, mapper, projection e testes puros
+│   │           ├── sessions/
+│   │           │   ├── domain/session.entity.ts
+│   │           │   ├── application/usecases/      # Criar, iniciar, pausar, retomar, encerrar
+│   │           │   ├── application/repositories/session.repository.ts
+│   │           │   └── infrastructure/
+│   │           │       ├── database/drizzle/drizzle-session.repository.ts
+│   │           │       └── http/                  # controllers, dtos, routes/docs
+│   │           ├── ingress/
+│   │           │   ├── application/usecases/process-interaction.usecase.ts
+│   │           │   ├── application/repositories/interaction.repository.ts
+│   │           │   └── infrastructure/
+│   │           │       ├── database/drizzle/drizzle-interaction.repository.ts
+│   │           │       ├── queue/ingress.worker.ts
+│   │           │       ├── tiktok/
+│   │           │       ├── simulator/
+│   │           │       └── http/                  # controllers, dtos, routes/docs
+│   │           └── auth/infrastructure/            # Better Auth e suas rotas
 │   │
 │   └── web/                    # Frontend: Consumidor da API pública
 │       ├── Dockerfile.dev
@@ -103,6 +104,8 @@ tiktok-gamer-lives/
 │               └── auth-client.ts
 ```
 
+Esta árvore descreve a organização atual e o destino das próximas fases. A fase 2 reside em `src/modules/games/axb/` e `src/common/registry/`. Não se criam pastas de camadas vazias no jogo A x B nem casos de uso de login que dupliquem o Better Auth.
+
 ---
 
 ## 2. Fases de Implementação Detalhadas (Com TDD nos Módulos Críticos)
@@ -119,7 +122,7 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
 - **Arquivos Criados & Validados**:
   - `docker-compose.yml` (Postgres 17, Redis 7, apps/api Fastify em Node 24.21.0, apps/web TanStack Router em Node 24.21.0).
   - `.env` e `.env.example` configurados na raiz e em cada workspace.
-  - `apps/api/src/config/env.ts` (validação com Zod).
+  - `apps/api/src/common/config/env.ts` (validação com Zod; movido após a conclusão da fase).
   - `apps/api/src/app.ts` e `apps/api/src/index.ts` (Fastify 5 com health check e CORS).
   - `apps/web/src/styles/index.css` (tema Tweakcn Enterprise Mod 2 em Tailwind v4).
   - `apps/web/src/components/ui/` (catálogo completo de 47 componentes Shadcn UI).
@@ -129,7 +132,7 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
 
 ---
 
-### Fase 2: Motor de Regras A x B & Game Registry (TDD no Domínio Puro)
+### Fase 2: Motor de Regras A x B & Game Registry (TDD no Domínio Puro) — `[CONCLUÍDA]`
 
 - **Objetivo**: Implementar o motor de regras determinístico do jogo **A x B** (`RG-01` a `RG-12`) e o catálogo `GameRegistry`, 100% puro e sem I/O, guiado por testes rigorosos. Todos os contratos, tipos e constantes são internos a `apps/api`.
 - **Metodologia**: **TDD Rigoroso (Red → Green)** usando Vitest.
@@ -142,45 +145,51 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
   1. *Ciclo 1 (Votos e Cooldown)*:
      - **Red**: Teste para `RG-01` (comentários válidos `A`/`B` pontuam +1; textos inválidos como `time A` ou `AAAA` são ignorados) e `RG-02` (cooldown de 5 segundos compartilhado entre A e B por usuário).
      - **Green**: Implementação mínima em `mapper.ts` e `engine.ts`.
-  2. *Ciclo 2 (Presentes e Combos)*:
-     - **Red**: Teste para `RG-04` e `RG-05` (presente mapeado pontua para o lado correto com base na regra; combos incrementais `1 → 2 → 3 → 3 final` reconhecem apenas novas unidades, evitando soma duplicada).
-     - **Green**: Implementação da regra de combo no `engine.ts`.
+  2. *Ciclo 2 (Presentes e Unidades Reconhecidas)*:
+     - **Red**: Teste para `RG-04` e `RG-05` (o mapper usa `resourceKey`; recebe unidades já reconhecidas e o engine converte essas unidades em pontos sem processar contagens cumulativas).
+     - **Green**: Implementação do mapeamento de recurso e conversão de unidades em `engine.ts`.
   3. *Ciclo 3 (Vitória, Excedente e Timer de Intervalo)*:
      - **Red**: Teste para `RG-09` e `RG-10` (primeira contribuição que atinge/ultrapassa a meta define vitória, pontos excedentes ficam no placar da rodada e motor emite `timerRequests` de 5.000 ms para intervalo).
      - **Green**: Lógica de declaração de vitória e emissão declarativa de timer.
   4. *Ciclo 4 (Pausa e Fila de Pendências)*:
-     - **Red**: Teste para `RG-03`, `RG-08`, `RG-11` e `RG-12` (em pausa ou intervalo, comentários são descartados; presentes mapeados retornam status `DEFERRED`, sendo enfileirados como pendências que são aplicadas na retomada antes de novos eventos).
-     - **Green**: Tratamento de contexto pausado e pendências.
+     - **Red**: Teste para `RG-03`, `RG-08`, `RG-11` e `RG-12` (em pausa ou intervalo, comentários são descartados; contribuições reconhecidas ficam pendentes; `RESUME` as drena FIFO preservando o placar da rodada; vitória interrompe a drenagem e conserva o restante para a próxima rodada).
+     - **Green**: Tratamento de contexto pausado, comando explícito de retomada e pendências.
   5. *Ciclo 5 (Game Registry)*:
      - **Red**: Teste para registrar múltiplos módulos de jogo e recuperar por `gameId`.
-     - **Green**: Implementação de `apps/api/src/core/registry/game-registry.ts`.
-- **Arquivos a Criar**:
+     - **Green**: Implementação de `apps/api/src/common/registry/game-registry.ts`.
+- **Arquivos entregues na fase 2**:
   - `apps/api/src/contracts/engine.ts` (`GameModule`, `GameEngine`, `GameInputMapper`, `GameProjection`, `TimerRequest`).
   - `apps/api/src/contracts/ingress.ts` (`CommentInteraction`, `GiftInteraction`, `NormalizedInteraction`, `ConnectionStatus`).
-  - `apps/api/src/contracts/session.ts` (`SessionState`, `SessionConfig`, `SnapshotEnvelope`).
-  - `apps/api/src/games/axb/types.ts` (`AxBState`, `AxBCommand`, `AxBProjection`, `AxBConfig`).
-  - `apps/api/src/games/axb/schema.ts` (schemas Zod de configuração).
-  - `apps/api/src/games/axb/constants.ts` (catálogo de presentes TikTok + defaults).
-  - `apps/api/src/games/axb/__tests__/engine.test.ts`
-  - `apps/api/src/games/axb/__tests__/mapper.test.ts`
-  - `apps/api/src/games/axb/engine.ts`
-  - `apps/api/src/games/axb/mapper.ts`
-  - `apps/api/src/games/axb/projection.ts`
-  - `apps/api/src/games/axb/index.ts`
-  - `apps/api/src/core/registry/__tests__/game-registry.test.ts`
-  - `apps/api/src/core/registry/game-registry.ts`
-- **Critério de Conclusão**: 100% dos testes unitários de domínio passando no Vitest (`pnpm --filter api test:unit`). Nenhuma dependência de I/O nos módulos testados.
+  - `apps/api/src/contracts/session.ts` (`SessionState`, `SnapshotEnvelope`).
+  - `apps/api/src/modules/games/axb/types.ts` (`AxBState`, `AxBCommand`, `AxBProjection`, `AxBConfig`).
+  - `apps/api/src/modules/games/axb/schema.ts` (schemas Zod de configuração).
+  - `apps/api/src/modules/games/axb/constants.ts` (regras de recurso e defaults).
+  - `apps/api/src/modules/games/axb/__tests__/engine.test.ts`
+  - `apps/api/src/modules/games/axb/__tests__/mapper.test.ts`
+  - `apps/api/src/modules/games/axb/engine.ts`
+  - `apps/api/src/modules/games/axb/mapper.ts`
+  - `apps/api/src/modules/games/axb/projection.ts`
+  - `apps/api/src/modules/games/axb/index.ts`
+  - `apps/api/src/common/registry/__tests__/game-registry.test.ts`
+  - `apps/api/src/common/registry/game-registry.ts`
+
+**Contrato para as fases de ingresso:** um presente normalizado traz `resourceKey` opaco com namespace de origem, contagem cumulativa e identidade de sequência quando disponível. O núcleo de ingresso é responsável por deduplicação, reconhecimento de incremento, confiabilidade da identidade e persistência atômica do cursor com as novas unidades. Somente então entrega `RecognizedGiftContribution` (`resourceKey`, `units`) ao mapper A x B. Nem mapper nem engine comparam contagens cumulativas ou mantêm estado de combo. A implementação de ingresso, armazenamento/cursor e adaptadores externos permanece nas fases 3–5.
+- **Critério de Conclusão**: 100% dos testes unitários de domínio passando no Vitest (`pnpm --filter api test`). Nenhuma dependência de I/O nos módulos testados.
 
 ---
 
 ### Fase 3: Persistência (PostgreSQL + Drizzle) & Better Auth
 
-- **Objetivo**: Configurar a camada de dados relacional com Drizzle ORM no PostgreSQL e a autenticação com Better Auth. Tudo dentro de `apps/api`.
+- **Objetivo**: Configurar a camada de dados relacional com Drizzle ORM no PostgreSQL, os contratos e adaptadores de repositório necessários às próximas fases e a autenticação com Better Auth. Tudo dentro de `apps/api`.
 - **Metodologia**: Híbrido (Scaffold de schemas relacionais + Teste de integração de persistência e auth).
 - **Arquivos a Criar**:
-  - `apps/api/src/db/schema.ts` (tabelas: `users`, `sessions`, `accounts`, `game_sessions`, `interactions`, `game_commands`, `game_snapshots`, `game_rounds`).
-  - `apps/api/src/db/index.ts` (conexão pool Postgres e Drizzle client com auto-migração).
-  - `apps/api/src/auth/index.ts` (Better Auth configurado com Drizzle adapter e plugin email/senha).
+  - `apps/api/src/common/infrastructure/database/drizzle/schema.ts` (tabelas: `users`, `sessions`, `accounts`, `game_sessions`, `interactions`, `game_commands`, `game_snapshots`, `game_rounds`).
+  - `apps/api/src/common/infrastructure/database/drizzle/client.ts` e `migrations/` (conexão e migrações PostgreSQL).
+  - `apps/api/src/modules/sessions/application/repositories/session.repository.ts` e `apps/api/src/modules/sessions/infrastructure/database/drizzle/drizzle-session.repository.ts`.
+  - `apps/api/src/modules/ingress/application/repositories/interaction.repository.ts` e `apps/api/src/modules/ingress/infrastructure/database/drizzle/drizzle-interaction.repository.ts`.
+  - `apps/api/src/common/executor/application/repositories/` (interfaces de comandos e snapshots) e `apps/api/src/common/executor/infrastructure/database/drizzle/` (implementações).
+  - `apps/api/src/modules/auth/infrastructure/better-auth.ts` e `apps/api/src/modules/auth/infrastructure/http/routes/auth.routes.ts` (Better Auth com Drizzle adapter).
+- **Regra de dependência**: interfaces de repositório pertencem à aplicação; implementações Drizzle pertencem à infraestrutura. Casos de uso não importam schema, cliente Drizzle nem DTO HTTP. Better Auth fornece os fluxos padrão de registro, login e sessão.
 - **Critério de Conclusão**: Containers Postgres e Redis sobem via `docker compose up -d postgres redis`; migrações Drizzle rodam com sucesso; script de teste confirma criação e validação de sessão do Better Auth no banco.
 
 ---
@@ -190,29 +199,29 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
 - **Objetivo**: Construir a infraestrutura assíncrona com BullMQ (`ingress-queue`, `game-commands-queue`), garantindo deduplicação, execução serial estrita (FIFO conc=1) e persistência atômica de snapshots.
 - **Metodologia**: **TDD Rigoroso (Red → Green)** com Redis e PostgreSQL.
 - **Costuras sob Teste (Seams)**:
-  - `IngressWorker.process(rawInteraction)`
-  - `SerialExecutor.processCommand(commandJob)`
-  - `SessionService.createSession/start/pause/resume/stop`
+  - `ProcessInteractionUseCase.execute(rawInteraction)` e `IngressWorker.process(rawInteraction)`.
+  - `ProcessGameCommandUseCase.execute(commandJob)` via worker serial BullMQ.
+  - Casos de uso de sessão `create/start/pause/resume/end`.
 - **Ciclos TDD**:
   1. *Ciclo 1 (Ingress & Deduplicação)*:
      - **Red**: Teste que envia duas interações com mesma `idempotencyKey` e verifica que apenas uma é persistida e enfileirada no `game-commands-queue`.
-     - **Green**: Implementação de `apps/api/src/queues/ingress-worker.ts`.
+     - **Green**: Implementação de `apps/api/src/modules/ingress/application/usecases/process-interaction.usecase.ts` e `apps/api/src/modules/ingress/infrastructure/queue/ingress.worker.ts`.
   2. *Ciclo 2 (Execução Serial FIFO com concorrência 1)*:
      - **Red**: Teste que dispara 20 comandos simultâneos e valida que são processados em ordem sequencial estrita, gerando versões incrementais de snapshots sem race conditions.
-     - **Green**: Implementação de `apps/api/src/core/executor/serial-executor.ts`.
+     - **Green**: Implementação de `apps/api/src/common/executor/application/usecases/process-game-command.usecase.ts` e `apps/api/src/common/executor/infrastructure/queue/command.worker.ts`.
   3. *Ciclo 3 (Timers Declarativos e Intervalo de 5s)*:
      - **Red**: Teste que simula vitória e verifica agendamento do delayed job de 5.000 ms no BullMQ, acionando o comando de início da rodada seguinte ao expirar.
-     - **Green**: Integração de timers declarativos do motor no `SerialExecutor`.
+     - **Green**: Integração de timers declarativos no executor serial genérico de `common/executor/`.
   4. *Ciclo 4 (Ciclo de Sessão & Pausa)*:
      - **Red**: Teste que pausa a sessão, envia presentes (que viram pendências no Postgres) e na retomada drena as pendências em FIFO antes de aceitar novos eventos.
-     - **Green**: Implementação de `apps/api/src/core/session/session-service.ts`.
+     - **Green**: Implementação dos casos de uso em `apps/api/src/modules/sessions/application/usecases/`.
 - **Arquivos a Criar**:
-  - `apps/api/src/queues/__tests__/ingress-worker.test.ts`
-  - `apps/api/src/queues/__tests__/serial-executor.test.ts`
-  - `apps/api/src/queues/index.ts`
-  - `apps/api/src/queues/ingress-worker.ts`
-  - `apps/api/src/core/executor/serial-executor.ts`
-  - `apps/api/src/core/session/session-service.ts`
+  - `apps/api/src/common/infrastructure/queue/` (conexão Redis, `ingress-queue` e `game-commands-queue`).
+  - `apps/api/src/modules/ingress/application/usecases/process-interaction.usecase.ts` e `apps/api/src/modules/ingress/infrastructure/queue/ingress.worker.ts`.
+  - `apps/api/src/common/executor/application/usecases/process-game-command.usecase.ts` e `apps/api/src/common/executor/infrastructure/queue/command.worker.ts`.
+  - `apps/api/src/common/timers/` (agendamento de delayed jobs declarativos).
+  - `apps/api/src/modules/sessions/domain/session.entity.ts` e `apps/api/src/modules/sessions/application/usecases/` (criar, iniciar, pausar, retomar e encerrar).
+  - Testes dos casos de uso, worker de ingresso e executor serial, incluindo deduplicação, FIFO e transação de snapshot.
 - **Critério de Conclusão**: Testes de integração de filas e transações passando no Vitest com Docker ativo.
 
 ---
@@ -235,15 +244,14 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
   - O `SocketIOPublisher` implementa **coalescência server-side**: acumula snapshots em janela configurável (default 50ms) e emite apenas o snapshot mais recente (latest-wins) por janela, reduzindo de ~200 emissões/s para ~20 emissões/s.
   - Eventos `contribution_alert` são emitidos imediatamente (sem coalescência) para garantir feedback visual instantâneo.
 - **Arquivos a Criar**:
-  - `apps/api/src/adapters/tiktok/client.ts` (`TikTokLiveCaptureAdapter` com heartbeat watchdog, reconexão agressiva com backoff e emissão de alertas ao dashboard).
-  - `apps/api/src/adapters/simulator/client.ts` (Simulador de tráfego contínuo e rajada CA-11).
-  - `apps/api/src/adapters/socket/publisher.ts` (Servidor Socket.IO com coalescência de snapshots por janela temporal e throttler de segurança).
-  - `apps/api/src/routes/session.ts` (endpoints REST de sessão e exportação de auditoria JSON).
-  - `apps/api/src/routes/simulator.ts` (endpoints REST de injeção de eventos).
-  - `apps/api/src/routes/tiktok.ts` (endpoints REST de conexão TikTok).
-  - `apps/api/src/index.ts` (bootstrap Fastify completo na porta 3001 com todas as rotas e Socket.IO).
-  - `apps/api/src/adapters/simulator/__tests__/burst-load.test.ts` (Script de estresse CA-11).
-  - `apps/api/src/adapters/tiktok/__tests__/heartbeat.test.ts` (Teste de watchdog: simula silêncio do WebSocket e valida reconexão + emissão de alerta).
+  - `apps/api/src/modules/ingress/infrastructure/tiktok/tiktok-capture.adapter.ts` (`TikTokLiveCaptureAdapter` com heartbeat, reconexão e alertas ao dashboard).
+  - `apps/api/src/modules/ingress/infrastructure/simulator/simulator-capture.adapter.ts` (tráfego sintético contínuo e rajada CA-11).
+  - `apps/api/src/common/infrastructure/socket/socketio-snapshot-publisher.ts` (coalescência de snapshots e alertas imediatos).
+  - `apps/api/src/modules/sessions/infrastructure/http/` com `controllers/`, `dtos/`, `routes/` e `routes/docs/` (sessão e exportação de auditoria JSON).
+  - `apps/api/src/modules/ingress/infrastructure/http/` com `controllers/`, `dtos/`, `routes/` e `routes/docs/` (simulador e conexão TikTok).
+  - Schemas OpenAPI de cada rota nos respectivos `routes/docs/`; o handler global e `/api/docs/` já existem em `common/infrastructure/http/` e `app.ts`.
+  - `apps/api/src/app.ts` e `apps/api/src/index.ts` (composição dos adaptadores e inicialização na porta 3001).
+  - Testes de integração das rotas, do watchdog e da rajada CA-11 junto dos respectivos módulos.
 - **Critério de Conclusão**: Servidor Fastify respondendo com status 200/201 nas rotas; clientes Socket.IO recebendo snapshots coalescidos com projeção correta; teste de rajada CA-11 executado com convergência total do placar; watchdog do TikTok dispara reconexão após timeout simulado.
 
 ---

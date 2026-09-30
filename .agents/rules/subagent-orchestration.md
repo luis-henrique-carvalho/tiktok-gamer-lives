@@ -1,34 +1,32 @@
 ---
 trigger: always_on
-description: Garante que todo desenvolvimento de código seja orquestrado via subagentes da feature-factory no padrão /boost, com paralelismo inteligente e prompts profundos.
+description: Organiza tarefas grandes com os recursos de delegação disponíveis no ambiente, sem impor ferramentas específicas.
 ---
 
 ## Orquestração Mandatória de Subagentes (Padrão Boost & Feature Factory)
 
-Neste repositório, o agente primário da conversa atua EXCLUSIVAMENTE como **Orquestrador de Fábrica de Software**.
+Neste repositório, o agente primário da conversa atua como **User Bridge** e a execução técnica é delegada ao subagente **`feature-orchestrator`**.
 
 ### Regras Inegociáveis de Execução:
 
-1. **Proibição de Implementação Monolítica & Zero Pre-work**:
-   - É ESTRITAMENTE PROIBIDO ao agente primário implementar código de produção diretamente no chat principal com `write_to_file` ou `replace_file_content`.
-   - **Zero Pre-work**: O Orquestrador NÃO deve ler 20-30 arquivos manualmente para planejar. A exploração rápida deve usar o Grafo de Conhecimento (`graphify query`) e o plano deve ser redigido em até 2 minutos, delegando o aprofundamento aos subagentes.
-   - O chat principal é responsável APENAS por:
-     - Coletar requisitos e conduzir o `/grill-me` se houver dúvidas.
-     - Redigir o plano técnico (`docs/plans/<slug>.md` e `implementation_plan.md`).
-     - Aguardar aprovação explícita do usuário no Gate Humano 1 & 2.
-     - Disparar, coordenar e reportar o progresso dos subagentes especializados.
-     - Disparar obrigatoriamente o ritual de fechamento `/learn` no Gate 3.
+1. **Topologia Hierárquica em 2 Níveis**:
+   - **Nível 1 — Chat Canvas (Root / User Bridge)**:
+     - Realiza o **Gate 0 Mandatório (/grill-me)**: formula de 2 a 3 perguntas interativas via `ask_question` para sanar dúvidas de regras, casos de borda e decisões técnicas.
+     - Redige o plano técnico (`docs/plans/<slug>.md` e `implementation_plan.md`) via Grafo de Conhecimento (`graphify query`) em até 2 minutos (Zero Pre-work).
+     - Aguarda aprovação explícita do usuário no Gate Humano 1 & 2.
+     - Invoca o subagente `feature-orchestrator` (`Role: "Feature Factory Orchestrator"`) com o plano aprovado.
+     - Apresenta o resultado final no Gate 3 e dispara o fechamento `/learn`.
+   - **Nível 2 — Subagente Orquestrador (`feature-orchestrator`)**:
+     - Ativa suas skills no Passo 0.
+     - Comanda a esteira técnica e gerencia os blocos de execução paralela.
+     - Conduz o loop de auto-correção iterativo caso haja quebras de teste ou code smells.
+     - Reporta o resultado consolidado ao Chat Canvas.
 
-2. **Delegação Obrigatória aos Subagentes**:
-   Toda etapa técnica DEVE ser delegada usando a ferramenta `invoke_subagent`:
-   - **Pesquisa e Blast Radius**: Subagente `codebase-researcher` (Graphify + leitura).
-   - **Backend**: Subagente `backend-builder` (Fastify, PostgreSQL, Drizzle, BullMQ, TDD Red-Green-Refactor).
-   - **Frontend**: Subagente `frontend-builder` (Vite, TanStack, React 19, Shadcn/ui via CLI).
-   - **Verificação e Cobertura**: Subagente `test-verifier` (`./scripts/verify.sh` e testes de aceitação).
-   - **Auditoria e Anti-Bloat**: Subagente `implementation-validator` (Code Review de 2 eixos: Spec e Padrões/SOLID).
+2. **Passo 0 Mandatório de Ativação de Skills (Progressive Disclosure)**:
+   - Todo agente e subagente DEVE iniciar sua execução lendo os arquivos `SKILL.md` de seus respectivos playbooks através da ferramenta `view_file`. Sem isso, o Antigravity não ativa as skills e os badges de telemetria não são registrados na UI.
 
 3. **Paralelismo Duplo Inteligente (Construção e Validação)**:
-   - **Bloco 1 — Construção Concorrente**: Devido ao desacoplamento estrito (*Zero Shared Package*), `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) **PODEM e DEVEM ser despachados em paralelo** dentro de uma única chamada de `invoke_subagent`, acelerando radicalmente a entrega.
+   - **Bloco 1 — Construção Concorrente**: Devido ao desacoplamento estrito (*Zero Shared Package*), `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) **PODEM e DEVEM ser despachados em paralelo** dentro de uma única chamada de `invoke_subagent`.
    - **Bloco 2 — Validação & Auditoria Concorrentes**: Concluída a construção, `test-verifier` (execução da suíte `./scripts/verify.sh` e testes de aceitação) e `implementation-validator` (leitura e auditoria do diff contra Spec/SOLID) **PODEM e DEVEM ser despachados simultaneamente** em uma única chamada de `invoke_subagent`. Como o validador é estritamente read-only e o verificador executa testes em bash, não há concorrência de arquivos nem disputa de git lock.
    - Apenas arquivos compartilhados da raiz (`docker-compose.yml`, `package.json` raiz) operam em sequência.
 
@@ -37,11 +35,15 @@ Neste repositório, o agente primário da conversa atua EXCLUSIVAMENTE como **Or
    ```markdown
    **Task**: [Instrução do usuário verbatim]
 
+   **Passo 0: Ativação Obrigatória de Skills (MANDATÓRIO)**:
+   Antes de executar qualquer comando ou criar/modificar arquivos, você DEVE carregar seus playbooks invocando `view_file` nos caminhos canônicos:
+   - file:///home/luis/.../SKILL.md
+   - file:///home/luis/.../SKILL.md
+
    **Additional Context**:
    - Repositório: <caminho> | Branch: <branch>
    - Plano Técnico: docs/plans/<slug>.md e implementation_plan.md
    - Regras Canônicas: GEMINI.md (Zero Shared Package, Strict TS, CLI pnpm)
-   - Skills Ativas: [Instruções para ativar e seguir tdd, solid, ponytail, shadcn]
 
    **Escopo a Implementar**:
    1. Componentes/Arquivos exatos a criar ou modificar.
@@ -51,4 +53,4 @@ Neste repositório, o agente primário da conversa atua EXCLUSIVAMENTE como **Or
    ```
 
 5. **Ritual de Fechamento com `/learn`**:
-   - Concluída a entrega e aprovado o Gate 3, o Orquestrador deve invocar o protocolo `/learn` para consolidar lições aprendidas e atualizar o `GEMINI.md`.
+   - Concluída a entrega e aprovado o Gate 3, o Chat Canvas deve invocar o protocolo `/learn` para consolidar lições aprendidas e atualizar o `GEMINI.md`.

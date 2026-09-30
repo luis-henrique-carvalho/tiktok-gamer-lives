@@ -1,4 +1,4 @@
-import { loadEnv } from './config/env.js';
+import { loadEnv } from './common/config/env.js';
 import { buildApp } from './app.js';
 
 export async function main(): Promise<void> {

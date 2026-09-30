@@ -1,7 +1,7 @@
 # Especificação Técnica de Arquitetura — Plataforma de Lives Interativas
 
 > **Status**: Ativo & Autoritativo  
-> **Referência Principal no Repositório**: [GEMINI.md](../../GEMINI.md)
+> **Referência Principal no Repositório**: [AGENTS.md](../../AGENTS.md)
 
 ---
 
@@ -70,6 +70,66 @@ flowchart TD
 2. **Zero Pacote Compartilhado (`packages/shared` Proibido)**: `apps/api` e `apps/web` são completamente isolados. O contrato entre eles é estritamente o protocolo de rede (REST + Socket.IO). O frontend define seus tipos de consumo localmente.
 3. **Concorrência Determinística Serial (FIFO 1)**: Todas as transições de estado de uma sessão passam por uma fila BullMQ com `concurrency: 1`, eliminando race conditions sem locks distribuídos pessimistas.
 4. **Persistência de Snapshots Opacos em JSONB**: O estado do jogo é persistido no PostgreSQL como `jsonb` sem que o schema relacional precise conhecer as variáveis internas do jogo.
+
+### Organização modular do backend
+
+Esta é a estrutura de `apps/api/src/`. As pastas previstas para fases futuras são criadas quando sua implementação começar; a existência nesta árvore não indica funcionalidade concluída. `common/config`, `common/domain/errors`, `common/registry` e o HTTP de health seguem o padrão.
+
+```text
+apps/api/src/
+├── index.ts                         # Inicialização do processo
+├── app.ts                           # Composição Fastify, erros, CORS e OpenAPI
+├── contracts/                      # SPI e tipos genéricos internos da API
+│   ├── engine.ts
+│   ├── ingress.ts
+│   └── session.ts
+├── common/                         # Configuração e Host genérico a todos os jogos
+│   ├── config/env.ts
+│   ├── domain/errors/              # AppError e erros HTTP de aplicação
+│   ├── infrastructure/
+│   │   ├── http/                   # Handler global, health e documentação
+│   │   │   ├── controllers/
+│   │   │   ├── dtos/
+│   │   │   └── routes/docs/
+│   │   ├── database/drizzle/       # Cliente, schema e migrações compartilhados
+│   │   ├── queue/                  # Conexão Redis e filas BullMQ
+│   │   └── socket/                 # Publicação de snapshots e alertas
+│   ├── registry/                   # GameRegistry
+│   ├── executor/
+│   │   ├── application/
+│   │   │   ├── usecases/           # Processamento serial de comandos
+│   │   │   └── repositories/       # Interfaces de comandos e snapshots
+│   │   └── infrastructure/         # Worker e repositórios Drizzle
+│   └── timers/                     # Agendamento de timers declarativos
+└── modules/
+    ├── games/axb/                 # Engine, mapper, projection e testes puros
+    ├── sessions/
+    │   ├── domain/                # Estado e regras do ciclo de vida
+    │   ├── application/
+    │   │   ├── usecases/          # Criar, iniciar, pausar, retomar, encerrar
+    │   │   └── repositories/      # Interface SessionRepository
+    │   └── infrastructure/
+    │       ├── database/drizzle/  # DrizzleSessionRepository
+    │       └── http/              # controllers, dtos, routes e routes/docs
+    ├── ingress/
+    │   ├── application/
+    │   │   ├── usecases/          # Processar e deduplicar interações
+    │   │   └── repositories/      # Interface InteractionRepository
+    │   └── infrastructure/
+    │       ├── database/drizzle/  # DrizzleInteractionRepository
+    │       ├── queue/             # Ingress Worker
+    │       ├── tiktok/            # Captura real
+    │       ├── simulator/         # Captura sintética
+    │       └── http/              # controllers, dtos, routes e routes/docs
+    └── auth/
+        └── infrastructure/        # Better Auth e montagem das rotas
+```
+
+**Direção das dependências:** um controller Fastify valida DTOs e chama um caso de uso; o caso de uso depende de uma interface em `application/repositories/`; um adaptador em `infrastructure/database/drizzle/` implementa essa interface. O caso de uso não importa Fastify, DTO HTTP ou Drizzle. A composição em `app.ts` e no bootstrap fornece as implementações. O worker de ingresso segue o mesmo contrato de aplicação que a entrada HTTP.
+
+O executor em `common/` coordena fila, transação, snapshots, timers e publicação. Ele acessa o jogo ativo somente pelo `GameModule` do registro e mantém o estado do jogo opaco. O módulo `modules/games/axb` contém regras puras e não ganha repositórios ou endpoints próprios sem necessidade real. Better Auth possui os fluxos padrão de registro, login e sessão; casos de uso próprios são reservados para regras adicionais do produto.
+
+Os adaptadores HTTP de cada módulo usam `infrastructure/http/{controllers,dtos,routes}` e colocam schemas OpenAPI em `routes/docs/`. O handler global em `common/infrastructure/http/` traduz erros de aplicação e validação para respostas HTTP; erros inesperados retornam 500 sem expor detalhes. A documentação da API é servida em `/api/docs/`, e o documento OpenAPI em `/api/docs/json`.
 
 ---
 
@@ -214,8 +274,8 @@ sequenceDiagram
 flowchart LR
     subgraph API["apps/api (Autoridade do Domínio)"]
         CONTRACTS["contracts/<br/>engine.ts, ingress.ts, session.ts"]
-        GAMES["games/axb/<br/>engine, mapper, projection"]
-        ROUTES["routes/<br/>REST endpoints"]
+        GAMES["modules/games/axb/<br/>engine, mapper, projection"]
+        ROUTES["modules/*/infrastructure/http/routes/<br/>REST endpoints"]
         SOCKET_SERVER["Socket.IO Server<br/>emite snapshots"]
     end
 
@@ -242,78 +302,24 @@ flowchart LR
 
 ## 4. Contratos SPI da Game Engine (apps/api)
 
-Localizados em `apps/api/src/contracts/engine.ts`, estes contratos garantem que o motor de qualquer jogo seja **puro, determinístico e desacoplado**:
+Os contratos vigentes estão em `apps/api/src/contracts/engine.ts` e `apps/api/src/contracts/ingress.ts`. O código TypeScript é a fonte para assinaturas exatas; este quadro descreve as responsabilidades estáveis:
 
-```typescript
-export interface NormalizedInteraction {
-  id: string;
-  source: 'TIKTOK_LIVE' | 'SIMULATOR';
-  type: 'COMMENT' | 'GIFT' | 'LIKE' | 'SHARE';
-  senderId: string;
-  senderName: string;
-  timestamp: number;
-  payload: Record<string, unknown>;
-}
+| Contrato | Responsabilidade |
+| :--- | :--- |
+| `GameInputMapper<TConfig, TCommand>` | Converter comentários e contribuições de presente reconhecidas pelo núcleo (`GameInteraction`) em comandos do jogo ou ignorá-los. |
+| `GameEngine<TState, TConfig, TCommand>` | Criar estado inicial e aplicar comandos de forma pura, recebendo `ExecutionContext` explícito. |
+| `DecisionResult<TState>` | Devolver próximo estado, status, eventos e pedidos declarativos de timer; não executa I/O. |
+| `GameProjection<TState, TConfig, TProjection>` | Produzir os dados públicos do overlay a partir do estado e de `ProjectionMeta`. |
+| `GameModule<TState, TConfig, TProjection, TCommand>` | Reunir identidade, versão, mapper, engine, projection e validação opcional de configuração. |
 
-// 1. Tradutor de Interações
-export interface GameInputMapper<TConfig, TCommand> {
-  mapInteraction(interaction: NormalizedInteraction, config: TConfig): TCommand | null;
-}
-
-// 2. Motor Determinístico Puro
-export interface GameEngine<TState, TCommand, TConfig, TResult> {
-  createInitialState(config: TConfig): TState;
-  validateConfig(config: unknown): TConfig;
-  
-  applyCommand(
-    currentState: TState,
-    command: TCommand,
-    context: { timestamp: number; isPaused: boolean }
-  ): {
-    nextState: TState;
-    status: 'APPLIED' | 'DEFERRED' | 'IGNORED';
-    reason?: string;
-    roundResult?: TResult;
-    timerRequests?: Array<{
-      id: string;
-      durationMs: number;
-      commandOnExpire: TCommand;
-    }>;
-  };
-}
-
-// 3. Projeção de Apresentação para Frontend
-export interface GameProjection<TState, TConfig, TProjection> {
-  project(
-    state: TState,
-    config: TConfig,
-    meta: { isPaused: boolean; pendingCount: number }
-  ): TProjection;
-}
-
-// 4. Módulo de Jogo Completo
-export interface GameModule<
-  TConfig = unknown,
-  TState = unknown,
-  TCommand = unknown,
-  TResult = unknown,
-  TProjection = unknown
-> {
-  id: string;
-  name: string;
-  version: string;
-  mapper: GameInputMapper<TConfig, TCommand>;
-  engine: GameEngine<TState, TCommand, TConfig, TResult>;
-  projection: GameProjection<TState, TConfig, TProjection>;
-}
-```
+`NormalizedInteraction`, em `contracts/ingress.ts`, representa fatos normalizados recebidos da origem. Para presentes, contém `resourceKey`, contagem cumulativa e identidade de sequência quando disponível. Antes de chamar o mapper, o núcleo remove duplicatas, reconhece apenas novas unidades e emite um `RecognizedGiftContribution` com `resourceKey` e `units`; o mapper do jogo não recebe contagem cumulativa nem identidade de combo. O núcleo também persiste o cursor de reconhecimento e a contribuição na mesma transação, para que a entrega repetida não gere unidades duplicadas. A operação explícita `RESUME` da engine A x B drena as contribuições pendentes FIFO antes de o caso de uso aceitar novos eventos. As interfaces continuam internas a `apps/api`; a organização física do jogo fica em `modules/games/axb/` e o registry em `common/registry/`.
 
 ---
 
 ## 5. Persistência de Estado e Concorrência
 
 1. **Snapshots Opacos em JSONB**:
-   - O PostgreSQL armazena a sessão e as rodadas na tabela `game_rounds` e `session_snapshots`.
+   - O PostgreSQL armazena a sessão, as rodadas e os snapshots em `game_rounds` e `game_snapshots`.
    - O campo `state_snapshot` é tipado como `jsonb`. O Host grava e lê esse campo sem inspecionar propriedades internas.
 2. **Garantia de Ordem Serial (FIFO)**:
    - A fila BullMQ `game-commands-queue` é processada com `concurrency: 1` por worker.

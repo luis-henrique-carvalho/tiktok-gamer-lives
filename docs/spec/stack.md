@@ -1,7 +1,7 @@
 # Especificação da Stack Tecnológica — Plataforma de Lives Interativas
 
 > **Status**: Ativo  
-> **Referência Principal**: [GEMINI.md](../../GEMINI.md)
+> **Referência Principal**: [AGENTS.md](../../AGENTS.md)
 
 ---
 
@@ -12,6 +12,7 @@
 | **Monorepo** | `pnpm` workspaces | 9+ | Isolamento rígido de dependências entre `apps/api` e `apps/web`. |
 | **Backend Runtime** | Node.js | v22+ (LTS) | Suporte nativo a ESM, alta performance e tipagem estrita com TypeScript. |
 | **Framework HTTP** | Fastify | v5+ | Baixo overhead de CPU e latência mínima para rotas de controle e simulação. |
+| **Documentação da API** | `@fastify/swagger` + `@fastify/swagger-ui` | OpenAPI em `/api/docs/json`; interface em `/api/docs/` | Schemas junto às rotas de cada módulo, registrados pelo Fastify. |
 | **Streaming Tempo Real** | Socket.IO | v4+ | Comunicação bidirecional resiliente com fallback WebSocket e reconexão automática. |
 | **Filas & Mensageria** | Redis 7 + BullMQ | v5+ | Garantia estrita de concorrência 1 e FIFO determinístico nos comandos do jogo. |
 | **Banco de Dados** | PostgreSQL 17 | Relacional + JSONB | Armazenamento de sessões, auditoria e persistência de snapshots opacos de jogo. |

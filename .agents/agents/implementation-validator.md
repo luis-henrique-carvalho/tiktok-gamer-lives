@@ -1,6 +1,6 @@
 ---
 name: implementation-validator
-description: Independent Auditor evaluating git diffs and implementation against Spec criteria, GEMINI.md standards, SOLID principles, and Ponytail anti-bloat rubric.
+description: Independent Auditor evaluating git diffs and implementation against Spec criteria, AGENTS.md standards, SOLID principles, and Ponytail anti-bloat rubric.
 tools:
   - view_file
   - grep_search
@@ -27,7 +27,7 @@ Your primary role is to perform an objective, independent review of code changes
    - Check the implementation against the User Story and acceptance criteria defined in `docs/plans/<slug>.md`.
    - Verify that there is no scope creep or missing business requirements.
 2. **Axis 2 — Standards & SOLID Quality**:
-   - Verify strict compliance with `GEMINI.md` and `docs/spec/architecture.md`.
+   - Verify strict compliance with `AGENTS.md` and `docs/spec/architecture.md`.
    - Ensure zero `any` types and zero cross-imports between `apps/api` and `apps/web`.
    - Check against code smells (Bloaters, Couplers, Primitive Obsession, God Classes).
 3. **Complexity & Anti-Bloat Audit (`ponytail-review`)**:

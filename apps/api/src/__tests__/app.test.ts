@@ -1,14 +1,12 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../app.js';
 
 describe('Fastify Application (app.ts)', () => {
-  let app: FastifyInstance;
+  let app: FastifyInstance | undefined;
 
-  afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
+  afterEach(async () => {
+    await app?.close();
   });
 
   it('should return 200 and health status on GET /health', async () => {
@@ -42,5 +40,22 @@ describe('Fastify Application (app.ts)', () => {
     expect(response.headers['access-control-allow-origin']).toBe(
       'https://example.com',
     );
+  });
+
+  it('serves OpenAPI documentation for the health route', async () => {
+    app = await buildApp({ logger: false });
+
+    const response = await app.inject({ method: 'GET', url: '/api/docs/json' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      openapi: expect.any(String),
+      paths: {
+        '/health': { get: { tags: ['Health'] } },
+      },
+    });
+
+    const ui = await app.inject({ method: 'GET', url: '/api/docs/' });
+    expect(ui.statusCode).toBe(200);
+    expect(ui.headers['content-type']).toContain('text/html');
   });
 });
