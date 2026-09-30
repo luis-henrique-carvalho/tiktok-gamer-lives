@@ -2,7 +2,7 @@
 
 > **Metodologia**: Baseado no framework *Now / Next / Later* (Dean Peters & *Product Roadmaps Relaunched*).  
 > **Status**: Ativo & Evolutivo  
-> **Referências**: [GEMINI.md](../GEMINI.md) | [docs/spec/architecture.md](spec/architecture.md) | [docs/plans/mvp-walking-skeleton.md](plans/mvp-walking-skeleton.md)
+> **Referências**: [AGENTS.md](../AGENTS.md) | [docs/spec/architecture.md](spec/architecture.md) | [docs/plans/mvp-walking-skeleton.md](plans/mvp-walking-skeleton.md)
 
 ---
 

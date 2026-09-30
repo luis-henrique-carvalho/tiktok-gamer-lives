@@ -1,13 +1,8 @@
-export interface HealthStatus {
-  status: 'ok' | 'degraded';
-  timestamp: number;
-  uptime: number;
-  uptimeSeconds: number;
-}
+import type { HealthResponseDto } from '../dtos/health.dto.js';
 
 export function checkHealth(
   uptimeSeconds: number = process.uptime(),
-): HealthStatus {
+): HealthResponseDto {
   const roundedUptime = Math.floor(uptimeSeconds);
   return {
     status: 'ok',

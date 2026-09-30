@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Garante que todo desenvolvimento de código seja orquestrado via subagentes da feature-factory no padrão /boost, com paralelismo inteligente e prompts profundos.
+description: Organiza tarefas grandes com os recursos de delegação disponíveis no ambiente, sem impor ferramentas específicas.
 ---
 
 ## Orquestração Mandatória de Subagentes (Padrão Boost & Feature Factory)

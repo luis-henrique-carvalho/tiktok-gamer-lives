@@ -1,11 +1,17 @@
 ---
 name: feature-factory
-description: "Orquestrador agnóstico e reutilizável no modelo Fábrica de Software. Executa a cadeia de 7 subagentes potencializada por skills especializadas (graphify, plan, grill-me, tdd, solid, ponytail, shadcn, code-review), com restrição de ferramentas, seleção de modelos e 3 gates de aprovação humana."
+description: "Orquestra funcionalidades grandes com pesquisa, especificação, implementação, testes e revisão. Use a rota Codex ou Antigravity conforme o ambiente."
 ---
 
 # Fábrica de Software Global (Feature Factory)
 
-Orquestrador universal para desenvolvimento de software no modelo de **Fábrica de Software**. Totalmente **desacoplado de tecnologia ou linguagem**, adaptando-se a qualquer projeto ao consultar o `GEMINI.md` (ou `AGENTS.md`) local e integrando o catálogo de **skills especializadas** instaladas no sistema.
+## Execução no Codex
+
+No Codex, leia e siga [references/codex.md](references/codex.md). Essa referência define a esteira completa com os agentes e as ferramentas disponíveis no Codex. As seções abaixo são o fluxo do Antigravity e não se aplicam ao Codex: seus nomes de ferramentas, caminhos `.gemini/` e gates são específicos daquele ambiente.
+
+## Execução no Antigravity
+
+Orquestrador universal para desenvolvimento de software no modelo de **Fábrica de Software**. Totalmente **desacoplado de tecnologia ou linguagem**, adaptando-se a qualquer projeto ao consultar o `AGENTS.md` local e integrando o catálogo de **skills especializadas** instaladas no sistema.
 
 Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**, **especificação**, **construção sequencial** e **validação independente**, intercaladas por pontos de aprovação e alinhamento humano.
 
@@ -13,7 +19,7 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
 
 ## 1. Princípios de Governança Universal
 
-1. **Adesão às Regras Locais**: O orquestrador nunca assume tecnologias por conta própria. A stack, padrões de pastas e comandos de teste são extraídos dinamicamente do `GEMINI.md` (ou `AGENTS.md`) do projeto ativo.
+1. **Adesão às Regras Locais**: O orquestrador nunca assume tecnologias por conta própria. A stack, padrões de pastas e comandos de teste são extraídos dinamicamente do `AGENTS.md` do projeto ativo.
 2. **Potencialização por Skills Especializadas**: Cada fase da fábrica incorpora playbooks nativos (`graphify`, `/plan`, `/grill-me`, `tdd`, `solid`, `ponytail`, `shadcn`, `code-review`) para garantir excelência técnica em cada etapa.
 3. **Resolução Proativa de Decisões (`/grill-me`)**: Nenhuma suposição crítica de design, UX ou regra de negócio é feita sem antes entrevistar o usuário de forma estruturada.
 4. **Restrição Estrita de Ferramentas**:
@@ -45,7 +51,7 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
 | **4. `backend-builder`** | `self` | `flash` (High Effort) | Escrita | **`tdd`**, **`solid`**, **`ponytail`**, **`codebase-design`** | Constrói regras de negócio, dados e APIs com ciclo estrito Red → Green, aplicando SOLID e Clean Architecture balanceados com YAGNI radical. |
 | **5. `frontend-builder`** | `self` | `flash` (High Effort) | Escrita | **`shadcn`**, **`frontend-design`**, **`modern-web-guidance`** | Constrói telas e componentes com hierarquia visual intencional, Tailwind e padrões modernos de frontend sem acoplar backend. |
 | **6. `test-verifier`** | `self` | `flash` (High Effort) | Escrita / Cmd | **`tdd`**, **`chrome-devtools`**, **`a11y-debugging`** | Executa suítes de teste, adiciona testes de aceitação e verifica acessibilidade/performance onde aplicável. |
-| **7. `implementation-validator`** | `code-review` | `flash` (High Effort) | Leitura | **`code-review`**, **`solid`**, **`ponytail-review`**, **`efficient-swe-workflow`** | Audita o diff final em dois eixos (Spec vs. Padrões do `GEMINI.md` e SOLID), caçando code smells e complexidade desnecessária. |
+| **7. `implementation-validator`** | `code-review` | `flash` (High Effort) | Leitura | **`code-review`**, **`solid`**, **`ponytail-review`**, **`efficient-swe-workflow`** | Audita o diff final em dois eixos (Spec vs. Padrões do `AGENTS.md` e SOLID), caçando code smells e complexidade desnecessária. |
 
 ---
 
@@ -53,7 +59,7 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
 
 ```mermaid
 flowchart TD
-    START([Demanda da Feature]) --> FASE0[0. Leitura do GEMINI.md + Ativação de Skills com view_file]
+    START([Demanda da Feature]) --> FASE0[0. Leitura do AGENTS.md + Ativação de Skills com view_file]
     FASE0 --> FASE1[1. Codebase Researcher: Modelo Flash + graphify]
     FASE1 --> GRILL_ME["🎙️ Gate 0: Entrevista Pré-Voo Mandatória (/grill-me via ask_question)"]
     GRILL_ME --> FASE2[2. Story & Spec Writer: /plan + Zero Pre-work]
@@ -92,7 +98,7 @@ flowchart TD
 
 ### Fase 0: Inicialização de Contexto & Ativação de Skills do Chat Canvas
 Antes de qualquer interação:
-1. Localize e leia o arquivo `GEMINI.md` ou `AGENTS.md` na raiz do projeto.
+1. Localize e leia o arquivo `AGENTS.md` na raiz do projeto.
 2. **Ativação Obrigatória (Passo 0)**: O Chat Canvas DEVE carregar suas skills executando `view_file` em:
    - `file:///home/luis/repositories/tiktok-gamer-lives/.agents/skills/feature-factory/SKILL.md`
    - `file:///home/luis/.gemini/config/skills/plan/SKILL.md`
@@ -154,7 +160,7 @@ Antes de executar qualquer comando ou criar/modificar arquivos, você DEVE carre
 **Additional Context**:
 - Repositório: <caminho> | Branch: <branch>
 - Especificação: docs/plans/<slug>.md e implementation_plan.md
-- Invariantes: GEMINI.md (Zero Shared Package, Strict TS, CLI pnpm)
+- Invariantes: AGENTS.md (Zero Shared Package, Strict TS, CLI pnpm)
 
 **Escopo a Implementar**:
 1. Arquivos, portas e contratos específicos do workspace.
@@ -206,7 +212,7 @@ Concluída a construção, ambos os subagentes são disparados **simultaneamente
   - `file:///home/luis/.gemini/config/skills/efficient-swe-workflow/SKILL.md`
 - **Diretrizes (Leitura Pura)**:
   - **Eixo 1 (Spec)**: Avalia se os critérios de aceite foram cumpridos à risca e se houve *scope creep*.
-  - **Eixo 2 (Standards & SOLID)**: Avalia se o código respeita o `GEMINI.md`, tipagem estrita, princípios SOLID e o catálogo de code smells (Bloaters, Couplers, Primitive Obsession).
+  - **Eixo 2 (Standards & SOLID)**: Avalia se o código respeita o `AGENTS.md`, tipagem estrita, princípios SOLID e o catálogo de code smells (Bloaters, Couplers, Primitive Obsession).
   - **Auditoria de Complexidade (`ponytail-review`)**: Identifica abstrações mortas, duplicações e flexibilidade especulativa no diff.
 
 #### 🔄 Loop Autônomo de Auto-Correção (Padrão `/boost`)
@@ -224,6 +230,6 @@ Se o validador ou os testes apontarem divergências, falha de cobertura ou code 
 - Ao concluir a homologação e realizar o commit:
   - Dispare o protocolo do **`/learn`** para avaliar o que foi aprendido nesta entrega:
     - Novas armadilhas técnicas superadas.
-    - Decisões arquiteturais ou de UX que devem virar regras perpétuas em `GEMINI.md`.
+    - Decisões arquiteturais ou de UX que devem virar regras perpétuas em `AGENTS.md`.
     - Ajustes de playbooks e skills especializadas.
   - Elabore a proposta de aprendizado em `learning_proposal.md` para validação humana, garantindo que o conhecimento nunca se perca entre sessões.

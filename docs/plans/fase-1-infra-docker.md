@@ -2,7 +2,7 @@
 
 > **Status**: Proposto (Aguardando Aprovação no Gate 1)  
 > **Referência Principal**: [docs/plans/mvp-walking-skeleton.md](file:///home/luis/repositories/tiktok-gamer-lives/docs/plans/mvp-walking-skeleton.md)  
-> **Design & Governança**: [GEMINI.md](file:///home/luis/repositories/tiktok-gamer-lives/GEMINI.md), [docs/spec/architecture.md](file:///home/luis/repositories/tiktok-gamer-lives/docs/spec/architecture.md), [docs/spec/stack.md](file:///home/luis/repositories/tiktok-gamer-lives/docs/spec/stack.md)
+> **Design & Governança**: [AGENTS.md](../../AGENTS.md), [docs/spec/architecture.md](../spec/architecture.md), [docs/spec/stack.md](../spec/stack.md)
 
 ---
 
@@ -63,8 +63,8 @@ A **Fase 1** estabelece os alicerces de execução do monorepo, infraestrutura c
 ### 4.1. Backend Builder (`apps/api` & Docker Compose)
 - **Instalação Canônica**: `pnpm --filter api add @fastify/cors`
 - **Ambiente & Configuração**:
-  - Criar `apps/api/src/config/env.ts` com validação Zod (`PORT`, `HOST`, `NODE_ENV`, `DATABASE_URL`, `REDIS_URL`, `CORS_ORIGIN`).
-  - Criar teste `apps/api/src/config/__tests__/env.test.ts`.
+  - Configuração movida para `apps/api/src/common/config/env.ts`, com validação Zod (`PORT`, `HOST`, `NODE_ENV`, `DATABASE_URL`, `REDIS_URL`, `CORS_ORIGIN`).
+  - Teste atual em `apps/api/src/common/config/__tests__/env.test.ts`.
 - **Servidor Fastify**:
   - Criar factory do Fastify em `apps/api/src/app.ts` com CORS e rota `GET /health` retornando status, uptime e timestamp.
   - Atualizar `apps/api/src/index.ts` para inicializar a aplicação com shutdown gracioso.

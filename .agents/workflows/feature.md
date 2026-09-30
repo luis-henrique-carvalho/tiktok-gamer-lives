@@ -15,5 +15,5 @@ Quando o usuário solicitar o desenvolvimento de uma feature, fase ou refatoraç
    - Invoque `backend-builder` com `Workspace: inherit` (se envolver backend).
    - Invoque `frontend-builder` com `Workspace: inherit` (se envolver frontend).
    - Invoque `test-verifier` com `Workspace: inherit` para validar testes e `./scripts/verify.sh`.
-6. **Fase 4 (Validação Independente)**: Invoque `implementation-validator` para auditar o git diff contra a Spec e os padrões do `GEMINI.md`.
+6. **Fase 4 (Validação Independente)**: Invoque `implementation-validator` para auditar o git diff contra a Spec e os padrões do `AGENTS.md`.
 7. **Gate Humano 3 & Learn**: Apresente o `walkthrough.md`, colete aprovação do usuário e execute o ritual `/learn`.
