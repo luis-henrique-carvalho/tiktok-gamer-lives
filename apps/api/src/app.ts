@@ -3,7 +3,7 @@ import Fastify, {
   type FastifyServerOptions,
 } from 'fastify';
 import cors, { type FastifyCorsOptions } from '@fastify/cors';
-import { checkHealth } from './modules/health.js';
+import { healthRoutes } from './adapters/driving/http/health.controller.js';
 
 export interface AppOptions extends FastifyServerOptions {
   corsOrigin?: FastifyCorsOptions['origin'];
@@ -20,9 +20,7 @@ export async function buildApp(
     origin: corsOrigin,
   });
 
-  app.get('/health', async () => {
-    return checkHealth();
-  });
+  await app.register(healthRoutes);
 
   return app;
 }

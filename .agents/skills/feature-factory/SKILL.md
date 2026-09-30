@@ -53,79 +53,77 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
 
 ```mermaid
 flowchart TD
-    START([Demanda da Feature]) --> FASE0[0. Leitura do GEMINI.md do Projeto Ativo]
+    START([Demanda da Feature]) --> FASE0[0. Leitura do GEMINI.md + Ativação de Skills com view_file]
     FASE0 --> FASE1[1. Codebase Researcher: Modelo Flash + graphify]
-    FASE1 --> DECISAO_CHECK{Há ambiguidades ou trade-offs de design?}
-    
-    DECISAO_CHECK -- "Sim" --> GRILL_ME[Protocolo /grill-me: Entrevista Interativa via ask_question]
-    DECISAO_CHECK -- "Não" --> FASE2[2. Story & Spec Writer: /plan + Zero Pre-work]
-    GRILL_ME --> FASE2
+    FASE1 --> GRILL_ME["🎙️ Gate 0: Entrevista Pré-Voo Mandatória (/grill-me via ask_question)"]
+    GRILL_ME --> FASE2[2. Story & Spec Writer: /plan + Zero Pre-work]
     
     FASE2 --> GATE1{Gate Humano 1 & 2: Aprovação do Plano?}
     GATE1 -- "Ajustes Solicitados" --> FASE2
     
-    subgraph FASE3 ["Fase 3: Bloco de Construção Concorrente (invoke_subagent)"]
-        GATE1 -- "Aprovado" --> FASE3_BE[3.1. Backend Builder: apps/api/]
-        GATE1 --> FASE3_FE[3.2. Frontend Builder: apps/web/]
+    GATE1 -- "Aprovado" --> ORCH["🤖 Invocação do Subagente feature-orchestrator"]
+    
+    subgraph ORCH_SCOPE ["Escopo de Execução Autônoma (feature-orchestrator)"]
+        subgraph FASE3 ["Fase 3: Bloco de Construção Concorrente (invoke_subagent)"]
+            ORCH --> FASE3_BE[3.1. Backend Builder: apps/api/]
+            ORCH --> FASE3_FE[3.2. Frontend Builder: apps/web/]
+        end
+        
+        FASE3_BE --> SYNC_BUILD[Sincronização dos Builders]
+        FASE3_FE --> SYNC_BUILD
+        
+        subgraph FASE4 ["Fase 4: Bloco de Validação & Auditoria Concorrentes (invoke_subagent)"]
+            SYNC_BUILD --> FASE4_TEST[4.1. Test Verifier: verify.sh + regressão]
+            SYNC_BUILD --> FASE4_VAL[4.2. Implementation Validator: code-review 2 eixos + SOLID]
+        end
+        
+        FASE4_TEST --> SYNC_VAL[Consolidação de Vereditos]
+        FASE4_VAL --> SYNC_VAL
+        
+        SYNC_VAL --> CHECK_FAIL{Divergência ou Falha?}
+        CHECK_FAIL -- "Sim (Auto-correção)" --> FASE3
     end
     
-    FASE3_BE --> SYNC_BUILD[Sincronização dos Builders]
-    FASE3_FE --> SYNC_BUILD
-    
-    subgraph FASE4 ["Fase 4: Bloco de Validação & Auditoria Concorrentes (invoke_subagent)"]
-        SYNC_BUILD --> FASE4_TEST[4.1. Test Verifier: verify.sh + regressão]
-        SYNC_BUILD --> FASE4_VAL[4.2. Implementation Validator: code-review 2 eixos + SOLID]
-    end
-    
-    FASE4_TEST --> SYNC_VAL[Consolidação de Vereditos]
-    FASE4_VAL --> SYNC_VAL
-    
-    SYNC_VAL --> CHECK_FAIL{Divergência ou Falha?}
-    CHECK_FAIL -- "Sim" --> FASE3
-    CHECK_FAIL -- "Não" --> GATE3{Gate Humano 3: Homologação Final}
+    CHECK_FAIL -- "Não (Aprovado)" --> GATE3{Gate Humano 3: Homologação Final}
     GATE3 -- "Aprovado" --> FASE5["5. Fechamento Contínuo (/learn) & Commit"]
 ```
 
 ---
 
-### Fase 0: Inicialização de Contexto
-Antes de disparar qualquer subagente:
+### Fase 0: Inicialização de Contexto & Ativação de Skills do Chat Canvas
+Antes de qualquer interação:
 1. Localize e leia o arquivo `GEMINI.md` ou `AGENTS.md` na raiz do projeto.
-2. Identifique a stack, os comandos oficiais de teste/build e os links para `docs/spec/`.
+2. **Ativação Obrigatória (Passo 0)**: O Chat Canvas DEVE carregar suas skills executando `view_file` em:
+   - `file:///home/luis/repositories/tiktok-gamer-lives/.agents/skills/feature-factory/SKILL.md`
+   - `file:///home/luis/.gemini/config/skills/plan/SKILL.md`
+   - `file:///home/luis/.gemini/config/skills/domain-modeling/SKILL.md`
 
 ---
 
-### Fase 1: Mapeamento e Pesquisa (`codebase-researcher`)
+### Fase 1: Mapeamento Rápido (`codebase-researcher`)
 - **Skills Ativas**: `graphify`, `research`.
 - **Procedimento**:
-  - Dispare o subagente com modelo leve (`flash`) e ferramentas restritas a leitura.
-  - Utilize o **`graphify`** para mapear pontos de entrada afetados, interfaces que restringem a mudança e testes existentes que comprovam o resultado.
-  - Não realize nenhuma alteração de arquivos.
+  - Consulta o Grafo de Conhecimento (`graphify query`) para mapear pontos de entrada e blast radius em menos de 1 minuto sem varredura manual de arquivos.
 
 ---
 
-### 🎙️ Protocolo de Entrevista Interativa (`/grill-me`)
-Se durante a pesquisa ou levantamento surgirem requisitos ambíguos, bifurcações arquiteturais, trade-offs técnicos ou dúvidas sobre UX/comportamento:
-- **Ative o `/grill-me`**:
-  1. Conduza uma entrevista interativa com o usuário utilizando a ferramenta `ask_question`.
-  2. Faça **uma pergunta por vez**, caminhando de forma metódica pelos ramos da árvore de decisão.
-  3. Para cada pergunta, apresente alternativas objetivas prefixando a melhor opção técnica com **`(Recommended)`**.
-  4. Se uma dúvida puder ser respondida inspecionando o código ou os testes existentes, pesquise o código em vez de perguntar ao usuário.
-  5. Prossiga para a redação da especificação somente após todas as decisões estarem alinhadas.
+### 🎙️ Gate 0: Entrevista Pré-Voo Mandatória (`/grill-me` via `ask_question`)
+**Obrigatório em todas as fases/features não triviais** antes de escrever o plano técnico:
+1. O agente do Chat Canvas formula de 2 a 3 perguntas interativas usando a ferramenta `ask_question`.
+2. As perguntas cobrem:
+   - Casos de borda e regras de negócio essenciais (ex: overflow de pontuação, filas de eventos em pausa/intervalo).
+   - Trade-offs arquiteturais e estratégia de dados/mocks.
+   - Critérios de aceite específicos do usuário.
+3. Para cada pergunta, apresente alternativas objetivas com a melhor opção técnica prefixada com **`(Recommended)`**.
+4. Somente após a submissão das respostas do usuário no modal de `ask_question` é permitido avançar para a Fase 2.
 
 ---
 
-### Fase 2: Elaboração da História & Especificação (`story-writer` & `spec-writer`)
-- **Skills Ativas**: `/plan`, `domain-modeling`, `codebase-design`, `/grill-me` (opcional `prototype`).
+### Fase 2: Story & Spec Writer (`/plan` + Zero Pre-work)
+- **Skills Ativas**: `plan`, `domain-modeling`, `codebase-design`.
 - **Procedimento**:
-  - Utilize o **`domain-modeling`** para assegurar que entidades, estados e nomes respeitem o modelo do domínio.
-  - Utilize o **`codebase-design`** para planejar módulos profundos (*deep modules*) e definir explicitamente as costuras (*seams*) públicas onde os testes serão conectados.
-  - Utilize o **`/plan`** para formalizar o documento técnico consolidando as decisões do `/grill-me`, incluir diagramas Mermaid de fluxo e persistir em `docs/plans/<feature-slug>.md`.
-  - **Pre-Mortem Multi-Perspectiva (Padrão `/boost`)**: Antes de fechar a especificação, avalie o plano sob 3 lentes:
-    1. *Lente de Produto/Regra*: O `/grill-me` resolveu todas as ambiguidades com o usuário?
-    2. *Lente de Resiliência/Concorrência*: Como o sistema se comporta sob rajadas (ex: 50 presentes/s)? O BullMQ FIFO e os timers lidam de forma determinística?
-    3. *Lente de Simplicidade (`ponytail`)*: Há abstrações desnecessárias? Podemos resolver com tipos e funções puras?
-  - Sincronize com o artefato de planejamento interativo do Antigravity (`implementation_plan.md`).
+  - O Chat Canvas redige o plano em `docs/plans/<slug>.md` e `implementation_plan.md` em menos de 2 minutos consolidando as respostas do Gate 0.
+  - Solicita feedback e aguarda aprovação explícita no **Gate Humano 1 & 2**.
 
 ---
 
@@ -135,19 +133,28 @@ Se durante a pesquisa ou levantamento surgirem requisitos ambíguos, bifurcaçõ
 
 ---
 
-### Fase 3: Construção Paralela por Workspace (Builders)
-Graças ao desacoplamento estrito (*Zero Shared Package*), `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) são disparados **simultaneamente em paralelo** na mesma chamada de `invoke_subagent`.
+### Fase 3: Despacho do Subagente Orquestrador (`feature-orchestrator`)
+Aprovado o plano, o Chat Canvas invoca o subagente:
+- **Role**: `"Feature Factory Orchestrator"`
+- **TypeName**: `"feature-orchestrator"` (ou `"self"`)
+- **Prompt**: Contém o plano aprovado verbatim, links para os documentos autoritativos e a ordem de comandar a esteira.
+
+O `feature-orchestrator` executa o **Passo 0 de Skills** (`view_file` em `feature-factory/SKILL.md`, `codebase-design/SKILL.md`, `solid/SKILL.md`) e despacha os dois blocos em paralelo:
 
 #### 📝 Template Canônico de Despacho (Padrão Boost)
 Todo subagente DEVE receber um prompt estruturado contendo:
 ```markdown
 **Task**: [Instrução do usuário verbatim]
 
+**Passo 0: Ativação Obrigatória de Skills (MANDATÓRIO)**:
+Antes de executar qualquer comando ou criar/modificar arquivos, você DEVE carregar seus playbooks invocando `view_file` nos caminhos canônicos:
+- file:///home/luis/.../SKILL.md
+- file:///home/luis/.../SKILL.md
+
 **Additional Context**:
 - Repositório: <caminho> | Branch: <branch>
 - Especificação: docs/plans/<slug>.md e implementation_plan.md
 - Invariantes: GEMINI.md (Zero Shared Package, Strict TS, CLI pnpm)
-- Skills Ativas: Siga as diretrizes de [tdd, solid, ponytail, shadcn]
 
 **Escopo a Implementar**:
 1. Arquivos, portas e contratos específicos do workspace.
@@ -156,7 +163,10 @@ Todo subagente DEVE receber um prompt estruturado contendo:
 ```
 
 #### 3.1. `backend-builder` (Modelo: `flash` com High Effort / `inherit`)
-- **Skills Ativas**: `tdd`, `solid`, `ponytail`, `codebase-design`.
+- **Passo 0 Obrigatório**: Executar `view_file` em:
+  - `file:///home/luis/.gemini/config/skills/tdd/SKILL.md`
+  - `file:///home/luis/repositories/tiktok-gamer-lives/.agents/skills/solid/SKILL.md`
+  - `file:///home/luis/.gemini/config/plugins/ponytail/skills/ponytail/SKILL.md`
 - **Diretrizes**:
   - **`tdd`**: Escreva testes apenas nas costuras pré-acordadas. Siga o ciclo *Red → Green*: um teste que falha por vez, seguido da menor implementação que passa.
   - **`solid`**: Aplique inversão de dependência (DIP/Hexagonal Ports & SPIs), responsabilidade única (SRP) e segregação de interfaces (ISP). Valide entradas com Zod nas bordas e utilize tipagem estrita sem vazamento de infraestrutura para o domínio.
@@ -164,7 +174,10 @@ Todo subagente DEVE receber um prompt estruturado contendo:
   - **Dependências via CLI**: Sempre instale novos pacotes via CLI (`pnpm --filter api add [-D] <pacote>`). Nunca edite o `package.json` manualmente.
 
 #### 3.2. `frontend-builder` (Modelo: `flash` com High Effort / `inherit`)
-- **Skills Ativas**: `shadcn`, `frontend-design`, `modern-web-guidance`.
+- **Passo 0 Obrigatório**: Executar `view_file` em:
+  - `file:///home/luis/.gemini/config/skills/shadcn/SKILL.md`
+  - `file:///home/luis/.gemini/config/skills/frontend-design/SKILL.md`
+  - `file:///home/luis/.gemini/config/plugins/modern-web-guidance-plugin/skills/modern-web-guidance/SKILL.md`
 - **Diretrizes**:
   - **`shadcn`**: Reutilize primitivos acessíveis e componentes existentes.
   - **`frontend-design`**: Aplique estética visual e tipografia distintas e intencionais.
@@ -177,14 +190,20 @@ Todo subagente DEVE receber um prompt estruturado contendo:
 Concluída a construção, ambos os subagentes são disparados **simultaneamente no mesmo `invoke_subagent`**:
 
 #### 4.1. `test-verifier` (Modelo: `flash` com High Effort / `inherit`)
-- **Skills Ativas**: `tdd`, `chrome-devtools`, `a11y-debugging`.
+- **Passo 0 Obrigatório**: Executar `view_file` em:
+  - `file:///home/luis/.gemini/config/skills/tdd/SKILL.md`
+  - `file:///home/luis/.gemini/config/plugins/chrome-devtools-plugin/skills/a11y-debugging/SKILL.md`
 - **Diretrizes**:
   - Execute a suíte oficial do pipeline (`./scripts/verify.sh`).
   - Verifique typecheck, ESLint, thresholds de cobertura (90% backend, 85% frontend) e testes de regressão.
   - Onde aplicável, valide acessibilidade (a11y) e renderização no navegador.
 
 #### 4.2. `implementation-validator` (Modelo: `flash` com High Effort / `inherit`)
-- **Skills Ativas**: `code-review`, `solid`, `ponytail-review`, `efficient-swe-workflow`.
+- **Passo 0 Obrigatório**: Executar `view_file` em:
+  - `file:///home/luis/.gemini/config/skills/code-review/SKILL.md`
+  - `file:///home/luis/repositories/tiktok-gamer-lives/.agents/skills/solid/SKILL.md`
+  - `file:///home/luis/.gemini/config/plugins/ponytail/skills/ponytail-review/SKILL.md`
+  - `file:///home/luis/.gemini/config/skills/efficient-swe-workflow/SKILL.md`
 - **Diretrizes (Leitura Pura)**:
   - **Eixo 1 (Spec)**: Avalia se os critérios de aceite foram cumpridos à risca e se houve *scope creep*.
   - **Eixo 2 (Standards & SOLID)**: Avalia se o código respeita o `GEMINI.md`, tipagem estrita, princípios SOLID e o catálogo de code smells (Bloaters, Couplers, Primitive Obsession).
