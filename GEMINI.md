@@ -11,6 +11,7 @@ Toda a arquitetura, regras de negócio e especificações detalhadas do projeto 
 - 📐 **[Especificação de Arquitetura](docs/spec/architecture.md)**: **Documento autoritativo único de arquitetura**. Descreve a Arquitetura Hexagonal, Host Agnóstico, contratos SPI da engine (`GameInputMapper`, `GameEngine`, `GameProjection`), concorrência serial BullMQ (FIFO 1), persistência de snapshots opacos em JSONB e o desacoplamento estrito entre apps (Zero `packages/shared`).
 - ⚙️ **[Especificação da Stack & Cobertura](docs/spec/stack.md)**: Detalhamento de bibliotecas, versões (Fastify, TanStack Start, React 19, Socket.IO, BullMQ, Redis, PostgreSQL 17, Drizzle ORM, Better Auth, Tailwind CSS v4, Zustand) e thresholds estritos de cobertura Vitest V8 (**90% no Backend** e **85% no Frontend**).
 - 📋 **[Documento de Requisitos de Produto (PRD)](docs/prd-mvp-live-interativa.md)**: Regras de negócio, catálogo de presentes, sistema de combos, cooldowns e critérios de aceite do MVP.
+- 🧭 **[Roadmap Estratégico do Produto](docs/roadmap.md)**: Visão de produto no framework Now/Next/Later, grafo de dependências técnicas e acompanhamento de iniciativas.
 - 🗺️ **[Plano de Implementação Ativo (Walking Skeleton)](docs/plans/mvp-walking-skeleton.md)**: Roadmap executável e passos de implementação TDD do MVP.
 
 ---
