@@ -20,8 +20,8 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
    - Agentes de pesquisa e auditoria têm permissão **exclusiva de leitura** (`view_file`, `grep_search`, `find_by_name`, `list_dir`).
    - Modificações de código são permitidas apenas aos builders.
 5. **Seleção de Modelos Otimizada**:
-   - `flash` / `flash_lite`: Pesquisa inicial, varredura de código, mapeamento de chamadas e leitura leve.
-   - `pro`: Raciocínio arquitetural, elaboração de especificações, implementação de código (TDD) e auditoria de qualidade.
+   - `flash` / `flash_lite`: Pesquisa inicial, varredura de código, mapeamento de dependências e leitura leve.
+   - `flash` (High Effort / Thinking) ou `inherit`: Planejamento, especificações, implementação de código (TDD) e validação de qualidade, combinando máxima velocidade de execução com raciocínio profundo (*high effort thinking*).
 6. **Escrita Estritamente Sequencial**:
    - Builders (`backend-builder` → `frontend-builder` → `test-verifier`) **nunca rodam em paralelo**. Paralelismo é reservado unicamente a tarefas de leitura e auditoria.
 
@@ -32,12 +32,12 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
 | Papel | Tipo / Agente | Modelo | Permissão | Skills Integradas | Responsabilidade |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **1. `codebase-researcher`** | `research` | `flash` | Leitura | **`graphify`**, **`research`** | Mapeia o grafo de dependências, pontos de impacto e interfaces afetadas sem alterar código. |
-| **2. `story-writer`** | Orquestrador | `pro` | Leitura | **`domain-modeling`**, **`/grill-me`** | Converte a solicitação em User Stories claras. Aciona entrevista interativa para alinhar dúvidas de regras e requisitos. |
-| **3. `spec-writer`** | Orquestrador | `pro` | Docs | **`/plan`**, **`codebase-design`**, **`/grill-me`** | Resolve trade-offs técnicos via `/grill-me`, desenha módulos profundos (*deep modules*), costuras (*seams*) de teste e salva em `docs/plans/<slug>.md`. |
-| **4. `backend-builder`** | `self` | `pro` | Escrita | **`tdd`**, **`solid`**, **`ponytail`**, **`codebase-design`** | Constrói regras de negócio, dados e APIs com ciclo estrito Red → Green, aplicando SOLID e Clean Architecture balanceados com YAGNI radical. |
-| **5. `frontend-builder`** | `self` | `pro` | Escrita | **`shadcn`**, **`frontend-design`**, **`modern-web-guidance`** | Constrói telas e componentes com hierarquia visual intencional, Tailwind e padrões modernos de frontend sem acoplar backend. |
-| **6. `test-verifier`** | `self` | `pro` | Escrita / Cmd | **`tdd`**, **`chrome-devtools`**, **`a11y-debugging`** | Executa suítes de teste, adiciona testes de aceitação e verifica acessibilidade/performance onde aplicável. |
-| **7. `implementation-validator`** | `code-review` | `pro` | Leitura | **`code-review`**, **`solid`**, **`ponytail-review`**, **`efficient-swe-workflow`** | Audita o diff final em dois eixos (Spec vs. Padrões do `GEMINI.md` e SOLID), caçando code smells e complexidade desnecessária. |
+| **2. `story-writer`** | Orquestrador | `flash` (High Effort) | Leitura | **`domain-modeling`**, **`/grill-me`** | Converte a solicitação em User Stories claras. Aciona entrevista interativa para alinhar dúvidas de regras e requisitos. |
+| **3. `spec-writer`** | Orquestrador | `flash` (High Effort) | Docs | **`/plan`**, **`codebase-design`**, **`/grill-me`** | Resolve trade-offs técnicos via `/grill-me`, desenha módulos profundos (*deep modules*), costuras (*seams*) de teste e salva em `docs/plans/<slug>.md`. |
+| **4. `backend-builder`** | `self` | `flash` (High Effort) | Escrita | **`tdd`**, **`solid`**, **`ponytail`**, **`codebase-design`** | Constrói regras de negócio, dados e APIs com ciclo estrito Red → Green, aplicando SOLID e Clean Architecture balanceados com YAGNI radical. |
+| **5. `frontend-builder`** | `self` | `flash` (High Effort) | Escrita | **`shadcn`**, **`frontend-design`**, **`modern-web-guidance`** | Constrói telas e componentes com hierarquia visual intencional, Tailwind e padrões modernos de frontend sem acoplar backend. |
+| **6. `test-verifier`** | `self` | `flash` (High Effort) | Escrita / Cmd | **`tdd`**, **`chrome-devtools`**, **`a11y-debugging`** | Executa suítes de teste, adiciona testes de aceitação e verifica acessibilidade/performance onde aplicável. |
+| **7. `implementation-validator`** | `code-review` | `flash` (High Effort) | Leitura | **`code-review`**, **`solid`**, **`ponytail-review`**, **`efficient-swe-workflow`** | Audita o diff final em dois eixos (Spec vs. Padrões do `GEMINI.md` e SOLID), caçando code smells e complexidade desnecessária. |
 
 ---
 
@@ -115,21 +115,21 @@ Se durante a pesquisa ou levantamento surgirem requisitos ambíguos, bifurcaçõ
 ### Fase 3: Construção Sequencial (Builders)
 Execute os builders **estritamente em sequência**:
 
-#### 3.1. `backend-builder` (Modelo: `pro`)
+#### 3.1. `backend-builder` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `tdd`, `solid`, `ponytail`, `codebase-design`.
 - **Diretrizes**:
   - **`tdd`**: Escreva testes apenas nas costuras pré-acordadas. Siga o ciclo *Red → Green*: um teste que falha por vez, seguido da menor implementação que passa.
   - **`solid`**: Aplique inversão de dependência (DIP/Hexagonal Ports & SPIs), responsabilidade única (SRP) e segregação de interfaces (ISP). Valide entradas com Zod nas bordas e utilize tipagem estrita sem vazamento de infraestrutura para o domínio.
   - **`ponytail`**: Aplique o princípio da menor solução viável (YAGNI). Prefira recursos padrão da linguagem antes de bibliotecas externas; evite classes de suporte especulativas e abstrações prematuras.
 
-#### 3.2. `frontend-builder` (Modelo: `pro`)
+#### 3.2. `frontend-builder` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `shadcn`, `frontend-design`, `modern-web-guidance`.
 - **Diretrizes**:
   - **`shadcn`**: Reutilize primitivos acessíveis e componentes existentes.
   - **`frontend-design`**: Aplique estética visual e tipografia distintas e intencionais.
   - **`modern-web-guidance`**: Siga boas práticas de performance, CSS moderno e preserve o isolamento total dos tipos do backend (contratos de consumo locais).
 
-#### 3.3. `test-verifier` (Modelo: `pro`)
+#### 3.3. `test-verifier` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `tdd`, `chrome-devtools`, `a11y-debugging`.
 - **Diretrizes**:
   - Execute a suite oficial de testes (`pnpm test` ou equivalente).
@@ -141,7 +141,7 @@ Execute os builders **estritamente em sequência**:
 ### Fase 4: Validação Independente (`implementation-validator`)
 - **Skills Ativas**: `code-review`, `solid`, `ponytail-review`, `efficient-swe-workflow`.
 - **Procedimento**:
-  - Dispare o subagente independente de revisão (apenas leitura, modelo `pro`):
+  - Dispare o subagente independente de revisão (apenas leitura, modelo `flash` com High Effort / `inherit`):
     - **Eixo 1 (Spec)**: Avalia se os critérios de aceite foram cumpridos à risca e se houve *scope creep*.
     - **Eixo 2 (Standards & SOLID)**: Avalia se o código respeita o `GEMINI.md`, tipagem estrita, princípios SOLID e o catálogo de code smells (Bloaters, Couplers, Primitive Obsession).
     - **Auditoria de Complexidade (`ponytail-review`)**: Identifica abstrações mortas, duplicações e flexibilidade especulativa no diff.
