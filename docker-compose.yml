@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: tiktok-gamer-lives-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tiktok_gamer_lives
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tiktok-gamer-lives-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: tiktok-gamer-lives-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      HOST: "0.0.0.0"
+      NODE_ENV: "development"
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/tiktok_gamer_lives"
+      REDIS_URL: "redis://redis:6379"
+      CORS_ORIGIN: "*"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.dev
+    container_name: tiktok-gamer-lives-web
+    restart: unless-stopped
+    ports:
+      - "5176:5176"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  redis_data:
