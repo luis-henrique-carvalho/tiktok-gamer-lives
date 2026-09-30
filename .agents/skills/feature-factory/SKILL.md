@@ -22,12 +22,16 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
 5. **Seleção de Modelos Otimizada**:
    - `flash` / `flash_lite`: Pesquisa inicial, varredura de código, mapeamento de dependências e leitura leve.
    - `flash` (High Effort / Thinking) ou `inherit`: Planejamento, especificações, implementação de código (TDD) e validação de qualidade, combinando máxima velocidade de execução com raciocínio profundo (*high effort thinking*).
-6. **Escrita Estritamente Sequencial**:
-   - Builders (`backend-builder` → `frontend-builder` → `test-verifier`) **nunca rodam em paralelo**. Paralelismo é reservado unicamente a tarefas de leitura e auditoria.
+6. **Paralelismo Duplo Inteligente (Construção e Validação)**:
+   - **Bloco 1 (Construção Paralela)**: Devido ao desacoplamento estrito (*Zero Shared Package*), builders que atuam em diretórios isolados (`apps/api` e `apps/web`) **PODEM e DEVEM ser disparados em paralelo** na mesma chamada de `invoke_subagent`.
+   - **Bloco 2 (Validação & Auditoria Paralelas)**: Concluída a construção, `test-verifier` (execução do pipeline `./scripts/verify.sh`) e `implementation-validator` (auditoria do diff contra Spec e SOLID) **são disparados simultaneamente** em uma única chamada de `invoke_subagent`. O validador é estritamente read-only e o verificador executa testes em bash, eliminando qualquer contenção de arquivos e reduzindo o tempo de verificação pela metade.
+   - Serialização é reservada apenas para modificações em arquivos compartilhados da raiz (`docker-compose.yml`, `package.json` raiz).
 7. **Estratégia de Workspace & Git Worktrees**:
-   - **Padrão Sequencial (`Workspace: inherit`)**: Usado no dia a dia da fábrica para que cada builder receba o código da etapa anterior sem atrito ou necessidade de merge.
+   - **Padrão Sequencial/Paralelo (`Workspace: inherit`)**: Usado no dia a dia da fábrica para que cada builder receba o código da etapa anterior sem atrito ou necessidade de merge.
    - **Spikes & Provas de Conceito (`Workspace: branch`)**: Tarefas experimentais arriscadas criam automaticamente um Git Worktree temporário isolado, destruído com zero resíduo caso a abordagem seja descartada.
    - **Fluxo de Branches de Feature**: O desenvolvimento ocorre em branch de feature (`feat/<nome-da-fase>`), preservando a `master` sempre verde. O merge ocorre após o Gate 3 e a aprovação no `./scripts/verify.sh`.
+8. **Zero Pre-work no Planejamento (Padrão Boost)**:
+   - O Orquestrador planeja usando o Grafo de Conhecimento (`graphify query`) e redige a especificação técnica em até 2 minutos, sem inspecionar dezenas de arquivos manualmente antes da delegação.
 
 ---
 
@@ -54,21 +58,32 @@ flowchart TD
     FASE1 --> DECISAO_CHECK{Há ambiguidades ou trade-offs de design?}
     
     DECISAO_CHECK -- "Sim" --> GRILL_ME[Protocolo /grill-me: Entrevista Interativa via ask_question]
-    DECISAO_CHECK -- "Não" --> FASE2[2. Story & Spec Writer: /plan + codebase-design]
+    DECISAO_CHECK -- "Não" --> FASE2[2. Story & Spec Writer: /plan + Zero Pre-work]
     GRILL_ME --> FASE2
     
     FASE2 --> GATE1{Gate Humano 1 & 2: Aprovação do Plano?}
     GATE1 -- "Ajustes Solicitados" --> FASE2
-    GATE1 -- "Aprovado" --> FASE3_BE[3.1. Backend Builder: tdd + ponytail]
     
-    FASE3_BE --> FASE3_FE[3.2. Frontend Builder: shadcn + frontend-design]
-    FASE3_FE --> FASE3_TEST[3.3. Test Verifier: tdd + validação de suites]
+    subgraph FASE3 ["Fase 3: Bloco de Construção Concorrente (invoke_subagent)"]
+        GATE1 -- "Aprovado" --> FASE3_BE[3.1. Backend Builder: apps/api/]
+        GATE1 --> FASE3_FE[3.2. Frontend Builder: apps/web/]
+    end
     
-    FASE3_TEST --> FASE4[4. Implementation Validator: code-review 2 eixos + ponytail-review]
-    FASE4 --> CHECK_FAIL{Divergência Crítica?}
-    CHECK_FAIL -- "Sim" --> FASE3_BE
+    FASE3_BE --> SYNC_BUILD[Sincronização dos Builders]
+    FASE3_FE --> SYNC_BUILD
+    
+    subgraph FASE4 ["Fase 4: Bloco de Validação & Auditoria Concorrentes (invoke_subagent)"]
+        SYNC_BUILD --> FASE4_TEST[4.1. Test Verifier: verify.sh + regressão]
+        SYNC_BUILD --> FASE4_VAL[4.2. Implementation Validator: code-review 2 eixos + SOLID]
+    end
+    
+    FASE4_TEST --> SYNC_VAL[Consolidação de Vereditos]
+    FASE4_VAL --> SYNC_VAL
+    
+    SYNC_VAL --> CHECK_FAIL{Divergência ou Falha?}
+    CHECK_FAIL -- "Sim" --> FASE3
     CHECK_FAIL -- "Não" --> GATE3{Gate Humano 3: Homologação Final}
-    GATE3 -- "Aprovado" --> COMMIT([Conclusão / Commit Seguro])
+    GATE3 -- "Aprovado" --> FASE5["5. Fechamento Contínuo (/learn) & Commit"]
 ```
 
 ---
@@ -120,8 +135,25 @@ Se durante a pesquisa ou levantamento surgirem requisitos ambíguos, bifurcaçõ
 
 ---
 
-### Fase 3: Construção Sequencial (Builders)
-Execute os builders **estritamente em sequência**:
+### Fase 3: Construção Paralela por Workspace (Builders)
+Graças ao desacoplamento estrito (*Zero Shared Package*), `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) são disparados **simultaneamente em paralelo** na mesma chamada de `invoke_subagent`.
+
+#### 📝 Template Canônico de Despacho (Padrão Boost)
+Todo subagente DEVE receber um prompt estruturado contendo:
+```markdown
+**Task**: [Instrução do usuário verbatim]
+
+**Additional Context**:
+- Repositório: <caminho> | Branch: <branch>
+- Especificação: docs/plans/<slug>.md e implementation_plan.md
+- Invariantes: GEMINI.md (Zero Shared Package, Strict TS, CLI pnpm)
+- Skills Ativas: Siga as diretrizes de [tdd, solid, ponytail, shadcn]
+
+**Escopo a Implementar**:
+1. Arquivos, portas e contratos específicos do workspace.
+2. Protocolos de qualidade (TDD Red-Green, Zod nas bordas).
+3. Comandos de teste (pnpm --filter <app> test, ./scripts/verify.sh).
+```
 
 #### 3.1. `backend-builder` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `tdd`, `solid`, `ponytail`, `codebase-design`.
@@ -129,6 +161,7 @@ Execute os builders **estritamente em sequência**:
   - **`tdd`**: Escreva testes apenas nas costuras pré-acordadas. Siga o ciclo *Red → Green*: um teste que falha por vez, seguido da menor implementação que passa.
   - **`solid`**: Aplique inversão de dependência (DIP/Hexagonal Ports & SPIs), responsabilidade única (SRP) e segregação de interfaces (ISP). Valide entradas com Zod nas bordas e utilize tipagem estrita sem vazamento de infraestrutura para o domínio.
   - **`ponytail`**: Aplique o princípio da menor solução viável (YAGNI). Prefira recursos padrão da linguagem antes de bibliotecas externas; evite classes de suporte especulativas e abstrações prematuras.
+  - **Dependências via CLI**: Sempre instale novos pacotes via CLI (`pnpm --filter api add [-D] <pacote>`). Nunca edite o `package.json` manualmente.
 
 #### 3.2. `frontend-builder` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `shadcn`, `frontend-design`, `modern-web-guidance`.
@@ -136,24 +169,29 @@ Execute os builders **estritamente em sequência**:
   - **`shadcn`**: Reutilize primitivos acessíveis e componentes existentes.
   - **`frontend-design`**: Aplique estética visual e tipografia distintas e intencionais.
   - **`modern-web-guidance`**: Siga boas práticas de performance, CSS moderno e preserve o isolamento total dos tipos do backend (contratos de consumo locais).
-
-#### 3.3. `test-verifier` (Modelo: `flash` com High Effort / `inherit`)
-- **Skills Ativas**: `tdd`, `chrome-devtools`, `a11y-debugging`.
-- **Diretrizes**:
-  - Execute a suite oficial de testes (`pnpm test` ou equivalente).
-  - Adicione testes de aceitação ponta a ponta cobrindo a User Story.
-  - Realize validação de acessibilidade e ausência de regressões.
+  - **Dependências via CLI**: Sempre instale novos pacotes ou componentes via CLI (`pnpm --filter web add [-D] <pacote>` ou `pnpm --filter web dlx shadcn@latest add <componente>`). Nunca edite o `package.json` manualmente.
 
 ---
 
-### Fase 4: Validação Independente (`implementation-validator`)
+### Fase 4: Bloco de Validação & Auditoria Concorrentes (`test-verifier` || `implementation-validator`)
+Concluída a construção, ambos os subagentes são disparados **simultaneamente no mesmo `invoke_subagent`**:
+
+#### 4.1. `test-verifier` (Modelo: `flash` com High Effort / `inherit`)
+- **Skills Ativas**: `tdd`, `chrome-devtools`, `a11y-debugging`.
+- **Diretrizes**:
+  - Execute a suíte oficial do pipeline (`./scripts/verify.sh`).
+  - Verifique typecheck, ESLint, thresholds de cobertura (90% backend, 85% frontend) e testes de regressão.
+  - Onde aplicável, valide acessibilidade (a11y) e renderização no navegador.
+
+#### 4.2. `implementation-validator` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `code-review`, `solid`, `ponytail-review`, `efficient-swe-workflow`.
-- **Procedimento**:
-  - Dispare o subagente independente de revisão (apenas leitura, modelo `flash` com High Effort / `inherit`):
-    - **Eixo 1 (Spec)**: Avalia se os critérios de aceite foram cumpridos à risca e se houve *scope creep*.
-    - **Eixo 2 (Standards & SOLID)**: Avalia se o código respeita o `GEMINI.md`, tipagem estrita, princípios SOLID e o catálogo de code smells (Bloaters, Couplers, Primitive Obsession).
-    - **Auditoria de Complexidade (`ponytail-review`)**: Identifica abstrações mortas, duplicações e flexibilidade especulativa no diff.
-  - **Loop de Auto-Correção Autônomo (Padrão `/boost`)**: Se o validador ou os testes apontarem divergências, testes quebrados ou code smells críticos, o orquestrador não interrompe o usuário; ele re-injeta o diff e o log de erro no builder responsável para auto-correção iterativa até o `./scripts/verify.sh` passar 100%.
+- **Diretrizes (Leitura Pura)**:
+  - **Eixo 1 (Spec)**: Avalia se os critérios de aceite foram cumpridos à risca e se houve *scope creep*.
+  - **Eixo 2 (Standards & SOLID)**: Avalia se o código respeita o `GEMINI.md`, tipagem estrita, princípios SOLID e o catálogo de code smells (Bloaters, Couplers, Primitive Obsession).
+  - **Auditoria de Complexidade (`ponytail-review`)**: Identifica abstrações mortas, duplicações e flexibilidade especulativa no diff.
+
+#### 🔄 Loop Autônomo de Auto-Correção (Padrão `/boost`)
+Se o validador ou os testes apontarem divergências, falha de cobertura ou code smells críticos, o orquestrador recebe ambos os relatórios consolidados em uma única rodada e re-injeta o diagnóstico nos builders responsáveis até o `./scripts/verify.sh` passar 100%.
 
 ---
 

@@ -1,0 +1,19 @@
+FROM node:24.21.0-slim
+
+# Install pnpm 12.5.1
+RUN npm install -g pnpm@12.5.1
+
+WORKDIR /app
+
+# Copy dependency manifests
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+
+# Install all dependencies for the workspace
+RUN pnpm install --frozen-lockfile
+
+EXPOSE 3001
+
+CMD ["pnpm", "--filter", "api", "dev"]
+

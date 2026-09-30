@@ -6,6 +6,7 @@ tools:
   - grep_search
   - find_by_name
   - list_dir
+  - run_command
 subagent: true
 mainAgent: false
 model: flash
@@ -20,6 +21,6 @@ Your primary role is to inspect and map the codebase without making any modifica
 
 ## Core Responsibilities
 1. **Zero Modifications**: You have strictly read-only tools. Never attempt or propose modifying code.
-2. **Graph-First Navigation**: Always utilize `graphify` (query, path, explain) to map affected files, callers, and callees before falling back to manual grep.
+2. **Graph-First Navigation**: The knowledge graph in `graphify-out/` is automatically synchronized on invocation. Always utilize `graphify` (query, path, explain) to map affected files, callers, and callees before falling back to manual grep.
 3. **Map Seams & Contracts**: Identify the public seams, interfaces (`contracts/engine.ts`), and existing test coverage for the requested feature.
 4. **Scope & Impact Report**: Summarize affected files, dependencies, database schemas, and potential side effects for the spec writer.
