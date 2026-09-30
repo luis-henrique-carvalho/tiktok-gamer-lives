@@ -1,6 +1,6 @@
 ---
 name: solid
-description: Professional Software Engineering and SOLID Principles for modern TypeScript & Polyglot codebases. Enforces clean architecture, high cohesion, low coupling, interface segregation, dependency inversion, and pragmatic refactoring balanced with YAGNI (ponytail).
+description: Professional Software Engineering and SOLID Principles for modern TypeScript & Polyglot codebases. Enforces clean architecture, high cohesion, low coupling, interface segregation, dependency inversion, clean code, design patterns, and pragmatic refactoring balanced with YAGNI (ponytail).
 ---
 
 # Solid Skills: Professional Software Engineering (TypeScript & Polyglot)
@@ -21,11 +21,39 @@ You operate as a senior software craftsman. Every module, function, and interfac
 
 > "Code is written to create value for users. Testable, flexible, and maintainable code is essential because software must be discoverable, understandable, testable, and evolvable at low cost."
 
-Good software balances **formal engineering principles** (SOLID, Clean Architecture) with **extreme pragmatism** (YAGNI, Ponytail simplicity, native idioms).
+Good software balances **formal engineering principles** (SOLID, Clean Architecture, Design Patterns) with **extreme pragmatism** (YAGNI, Ponytail simplicity, native idioms).
 
 ---
 
-## The Non-Negotiable Process
+## Core Principles
+
+| Principle | Focus |
+| :--- | :--- |
+| **TDD** | Red-Green-Refactor cycle, tests before code. |
+| **SOLID** | Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion. |
+| **Clean Code** | Meaningful names, small functions, no comments needed (self-documenting code). |
+| **Design Patterns** | Creational, Structural, Behavioral patterns (emergent from refactoring, not forced). |
+| **Architecture** | Vertical slicing, dependency rule, hexagonal & clean architecture. |
+
+---
+
+## Reference Documentation Included
+
+The following detailed guides are available in the [`references/`](references/) directory:
+
+- 🧪 [**`tdd.md`**](references/tdd.md): Test-Driven Development practices, the Three Laws of TDD, and Red-Green-Refactor cycles.
+- 🎯 [**`solid-principles.md`**](references/solid-principles.md): SOLID principles with deep TypeScript examples and detection questions.
+- 🧼 [**`clean-code.md`**](references/clean-code.md): Clean code guidelines, naming conventions, functions, and control flow.
+- 🧰 [**`design-patterns.md`**](references/design-patterns.md): GoF design patterns (Creational, Structural, Behavioral) with real-world examples.
+- 🏛️ [**`architecture.md`**](references/architecture.md): Clean architecture, hexagonal ports & adapters, vertical slicing, and dependency rules.
+- 🦨 [**`code-smells.md`**](references/code-smells.md): Code smell detection (Bloaters, Couplers, Change Preventers) and refactoring strategies.
+- 🧩 [**`object-design.md`**](references/object-design.md): Object stereotypes, responsibilities, and behavioral design.
+- ✂️ [**`complexity.md`**](references/complexity.md): Managing essential vs. accidental complexity, KISS, YAGNI, and Rule of Three.
+- 🔍 [**`testing.md`**](references/testing.md): Testing strategies, test naming, and the Arrange-Act-Assert pattern.
+
+---
+
+## Detailed Playbook
 
 ### 1. Test-Driven Development (TDD) First
 
@@ -44,8 +72,6 @@ Good software balances **formal engineering principles** (SOLID, Clean Architect
 
 *Architectural insight: Design and clean boundaries emerge during the REFACTOR phase, not before.*
 
-*(See [references/tdd.md](references/tdd.md) and [references/testing.md](references/testing.md))*
-
 ---
 
 ### 2. SOLID Principles in Practice
@@ -59,8 +85,6 @@ Every module, class, interface, and function must be evaluated against SOLID:
 | **L**SP - Liskov Substitution | "Can subtypes or implementations replace base types without surprises?" | Implementations must fulfill contracts completely; never throw `NotImplementedError` or violate invariants. |
 | **I**SP - Interface Segregation | "Are consumers forced to depend on methods they do not use?" | Favor small, role-specific interfaces (`GameEngine`, `GameInputMapper`) over fat, bloated interfaces. |
 | **D**IP - Dependency Inversion | "Do high-level modules depend on abstractions rather than concrete details?" | Host/Core depends on abstract Ports/SPIs. Adapters (Postgres, Redis, BullMQ, Socket.IO) implement the abstractions. |
-
-*(See [references/solid-principles.md](references/solid-principles.md))*
 
 #### Concrete Example: Hexagonal SPI & DIP
 
@@ -91,66 +115,90 @@ export class GameCoordinator {
 
 ---
 
-### 3. Clean Code & Idiomatic TypeScript
+### 3. Clean Code: Meaningful Names, Small Functions, No Comments Needed
 
 Adopt clean code principles tailored for modern TypeScript without dogmatic OOP baggage:
 
-#### Naming & Expressiveness
-1. **Consistency**: Same domain concept = same name across API, DB, and tests.
-2. **Ubiquitous Language**: Use domain terminology (`GiftEvent`, `ComboBuffer`, `RoomSession`) over generic labels (`Data`, `Info`, `Manager`, `Processor`).
-3. **Brevity with Clarity**: Greppable, explicit names.
+#### Meaningful Names
+- **Consistency**: Same domain concept = same name across API, DB, and tests.
+- **Ubiquitous Language**: Use domain terminology (`GiftEvent`, `ComboBuffer`, `RoomSession`) over generic labels (`Data`, `Info`, `Manager`, `Processor`).
+- **Brevity with Clarity**: Greppable, explicit names without cryptic abbreviations.
 
-#### Functions & Control Flow
-- **Small & Focused**: Functions should do one thing at one level of abstraction.
-- **Fail Fast / Guard Clauses**: Use early returns. Eliminate nested `if / else` ladders.
+#### Small Functions & Control Flow
+- **Single Level of Abstraction**: Functions should do one thing and do it well.
+- **Guard Clauses & Early Returns**: Eliminate nested `if / else` ladders. Fail fast at the top.
 - **Positive Conditionals**: Favor `isValid(x)` over `!isInvalid(x)`.
-- **Parameter Count**: Prefer 1-2 parameters; for 3+, use an explicit options/command object.
+- **Parameter Count**: Prefer 1-2 parameters; for 3+, group into an explicit command or options object.
+
+#### Self-Documenting Code (No Comments Needed)
+- **Code Explains Intent**: If code requires an inline comment to explain *what* it is doing, extract a well-named function or variable instead.
+- **Comments are for Non-Obvious "Why" Only**: Reserve comments for external constraints, non-obvious business invariants, or performance workarounds. Never write comments that merely restate the code.
 
 #### Modern Value Objects & Type Safety
-*Avoid Java-style OOP boilerplate (like creating a 10-line class for every single string). Instead, use modern TypeScript idioms:*
+*Avoid Java-style OOP boilerplate. Use modern TypeScript idioms:*
 - **Zod Schemas**: Parse and validate inputs at system boundaries (HTTP, WebSockets, BullMQ jobs).
-- **Branded Types / Pure Factory Functions**: Ensure type safety for domain primitives when needed:
-  ```typescript
-  export type UserId = string & { readonly __brand: unique symbol };
-  export type GiftId = string & { readonly __brand: unique symbol };
-  ```
-- **Native Readonly Collections**: Use idiomatic `readonly T[]` and pure array methods (`.map`, `.filter`, `.reduce`) rather than wrapping every list in a custom collection class.
-- **Object.hasOwn**: Validate untrusted keys using `Object.hasOwn(obj, key)` rather than `key in obj`.
-
-*(See [references/clean-code.md](references/clean-code.md))*
+- **Branded Types**: Ensure type safety for domain primitives when needed (`type UserId = string & { readonly __brand: unique symbol }`).
+- **Native Readonly Collections**: Use idiomatic `readonly T[]` and pure array methods (`.map`, `.filter`, `.reduce`) rather than wrapping every list in a custom class.
+- **`Object.hasOwn`**: Validate untrusted keys using `Object.hasOwn(obj, key)` rather than `key in obj`.
 
 ---
 
-### 4. Pragmatism vs. Over-Engineering (Balancing with Ponytail)
+### 4. Design Patterns: Creational, Structural, Behavioral
 
-> **Rule of Pragmatism**: Never introduce an abstraction until you actually have multiple implementations or proven volatility (Rule of Three). Speculative generality is technical debt.
+> **Warning**: Never force patterns upfront. Let them emerge naturally during the TDD REFACTOR phase.
 
-- **Essential Complexity**: The core problem you must solve (e.g. TikTok gift combos, serial execution FIFO).
-- **Accidental Complexity**: Extra layers, factories, abstract factories, and wrappers you introduced because "we might need it someday".
-- **Delete / Inline**: If an interface only has and will only ever have 1 trivial implementation, don't invent 5 layers of indirection unless architectural boundaries (e.g., Hexagonal ports) require it.
+#### Creational Patterns
+- **Factory Functions**: Use pure factory functions (`createRoomSession(...)`) to instantiate complex domain objects with validated invariants.
+- **Builder**: Use for configuring multi-step objects or test data builders (`aGiftEvent().withCombo(5).build()`).
 
-*(See [references/complexity.md](references/complexity.md))*
+#### Structural Patterns
+- **Adapter**: Translate third-party or infrastructure APIs (e.g. TikTok Live connector, Redis client) to internal domain ports.
+- **Facade**: Provide a simple, unified interface over complex subsystems (e.g. `GameHostFacade` orchestrating worker, engine, and sockets).
+- **Composite**: Treat individual items and compositions uniformly (e.g. composite game rules or input filters).
+
+#### Behavioral Patterns
+- **Strategy**: Swap algorithms or rules cleanly (e.g. `ScoringStrategy`, `ComboThresholdStrategy`) without changing client code.
+- **Command**: Encapsulate user/gift actions into serializable command objects for BullMQ processing.
+- **Observer / Pub-Sub**: Decouple state mutations from event emission (e.g. domain events dispatched to Socket.IO rooms).
 
 ---
 
-### 5. Architecture & Boundary Design
+### 5. Architecture: Vertical Slicing, Dependency Rule, Clean Architecture
 
 Follow the **Dependency Rule** and **Vertical Slicing**:
+
+```
+[ Inbound Adapters ]  -->  [ Application Ports / Use Cases ]  <--  [ Pure Domain Core ]
+(Fastify, WebSockets)              (Commands, Handlers)                  (Rules, State)
+                                            |
+                                            v
+                                  [ Outbound Adapters ]
+                                  (Postgres, Redis, BullMQ)
+```
 
 1. **Vertical Slicing**: Group features by domain slices (`modules/games/`, `modules/donations/`, `modules/session/`) rather than technical layers (`controllers/`, `services/`, `models/`).
 2. **Ports & Adapters (Hexagonal)**:
    - **Core/Domain**: Pure business rules, zero framework dependencies.
    - **Ports**: Inbound (API/WebSocket routes) and Outbound (Database, Queues, Cache).
    - **Adapters**: Concrete implementations (Fastify, Drizzle, Redis, BullMQ).
-3. **Zero Leaks**:
+3. **The Dependency Rule**: Source code dependencies point inward toward high-level policies. Infrastructure depends on domain, never the reverse.
+4. **Zero Leaks**:
    - Never leak ORM entities, raw database rows, or framework request objects into domain logic.
    - Never share backend domain models directly with frontend consumers; keep network payloads explicitly typed per boundary.
 
-*(See [references/architecture.md](references/architecture.md) and [references/object-design.md](references/object-design.md))*
+---
+
+### 6. Pragmatism vs. Over-Engineering (Balancing with Ponytail)
+
+> **Rule of Pragmatism**: Never introduce an abstraction until you actually have multiple implementations or proven volatility (Rule of Three). Speculative generality is technical debt.
+
+- **Essential Complexity**: The core problem you must solve (e.g. TikTok gift combos, serial execution FIFO).
+- **Accidental Complexity**: Extra layers, factories, abstract factories, and wrappers introduced because "we might need it someday".
+- **Delete / Inline**: If an interface only has and will only ever have 1 trivial implementation, don't invent 5 layers of indirection unless architectural boundaries (e.g., Hexagonal ports) require it.
 
 ---
 
-### 6. Code Smell Detection & Refactoring Taxonomy
+### 7. Code Smell Detection & Refactoring Taxonomy
 
 Stop and refactor immediately when encountering these smells:
 
@@ -167,8 +215,6 @@ Stop and refactor immediately when encountering these smells:
 | | Dead / Zombie Code | Uncalled functions, commented code, unused imports | Delete ruthlessly |
 | | Duplicated Logic | Identical logic copy-pasted in multiple places | Extract helper after the 3rd occurrence (Rule of Three) |
 | **Conditionals**| Massive Switch/If | Branching on type strings across many files | Polymorphic Strategy / Command Map |
-
-*(See [references/code-smells.md](references/code-smells.md) and [references/design-patterns.md](references/design-patterns.md))*
 
 ---
 
