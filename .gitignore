@@ -1,0 +1,66 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build & Output
+dist
+dist-ssr
+build
+out
+.output
+.vinxi
+.tanstack
+*.tsbuildinfo
+.eslintcache
+
+# Testing & Coverage
+coverage
+.nyc_output
+*.lcov
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+secrets.json
+creds.md
+*.pem
+*.key
+*.crt
+*.pfx
+id_rsa
+
+# IDE & Editors
+.idea/
+*.swp
+*.swo
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary & Cache
+.temp
+.tmp
+.cache
+.turbo
+graphify-out/
