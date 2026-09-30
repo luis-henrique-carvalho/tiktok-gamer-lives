@@ -20,23 +20,35 @@
 ## 2. Visão do Roadmap (Now / Next / Later)
 
 ```mermaid
-timeline
-    title Evolução da Plataforma de Lives Interativas
-    section NOW (MVP Walking Skeleton)
-        Infraestrutura & Docker : Postgres 17, Redis 7, Fastify, TanStack Start
-        Motor A x B Puro : TDD de Votos, Cooldown, Combos e Vitória
-        Ingress & Serial FIFO : Deduplicação e execução determinística BullMQ
-        Overlay OBS & Áudio : Projeção vertical 1080×1920 e Web Audio procedural
-        Painel & Simulador : Auth Better Auth, controle de sessão e simulação de eventos
-    section NEXT (Operação Real & Polimento)
-        Conector TikTok LIVE : Conexão em tempo real e reconexão automática
-        Customização de Overlay : Temas Neon Arena, Retro e seleção de cores
-        Leaderboard de Doadores : Ranking de apoiadores e histórico da live
-        Gestão Dinâmica de Presentes : Ajuste de pontuações pela UI sem reinício
-    section LATER (Novos Jogos & Expansão)
-        Módulos Plugáveis SPI : Boss Coletivo, Roleta 4 Times e Corrida
-        Voz & TTS com IA : Narração dinâmica de presentes e jogadas
-        Multi-Streamer : Suporte multi-tenant para múltiplos canais simultâneos
+flowchart LR
+    subgraph NOW["🟢 NOW: MVP Walking Skeleton"]
+        direction TB
+        N1["1. Fundação & Docker: Postgres, Redis, Fastify, Web"]
+        N2["2. Motor A x B Determinístico: TDD Puro"]
+        N3["3. Ingress & Fila Serial FIFO: BullMQ concorrência 1"]
+        N4["4. Overlay OBS 1080×1920 & Áudio Procedural"]
+        N5["5. Painel do Streamer & Simulador de Live"]
+        N1 --> N2 --> N3 --> N4 --> N5
+    end
+
+    subgraph NEXT["🟡 NEXT: Operação Real & Refinamento"]
+        direction TB
+        X1["Conector TikTok LIVE Oficial"]
+        X2["Temas Plugáveis do Overlay"]
+        X3["Leaderboard de Apoiadores da Live"]
+        X4["Gestão Dinâmica de Metas e Presentes"]
+        X1 --> X2 --> X3 --> X4
+    end
+
+    subgraph LATER["🔵 LATER: Novos Jogos & Escala"]
+        direction TB
+        L1["Novos Jogos SPI: Boss Coletivo, 4 Times"]
+        L2["Narração Dinâmica por Voz e TTS com IA"]
+        L3["Multi-Canal e Suporte Multi-Streamer"]
+        L1 --> L2 --> L3
+    end
+
+    NOW ==> NEXT ==> LATER
 ```
 
 ---
