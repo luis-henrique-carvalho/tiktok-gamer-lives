@@ -73,7 +73,7 @@ flowchart TD
 
 ### Organização modular do backend
 
-Esta é a **estrutura alvo** de `apps/api/src/`. As pastas previstas para fases futuras são criadas quando sua implementação começar; a existência nesta árvore não indica funcionalidade concluída. Hoje `common/config`, `common/domain/errors` e o HTTP de health já seguem o padrão. O jogo A x B e o registro ainda estão nos caminhos históricos `games/axb/` e `core/registry/`, respectivamente, até sua migração estrutural.
+Esta é a estrutura de `apps/api/src/`. As pastas previstas para fases futuras são criadas quando sua implementação começar; a existência nesta árvore não indica funcionalidade concluída. `common/config`, `common/domain/errors`, `common/registry` e o HTTP de health seguem o padrão.
 
 ```text
 apps/api/src/
@@ -127,7 +127,7 @@ apps/api/src/
 
 **Direção das dependências:** um controller Fastify valida DTOs e chama um caso de uso; o caso de uso depende de uma interface em `application/repositories/`; um adaptador em `infrastructure/database/drizzle/` implementa essa interface. O caso de uso não importa Fastify, DTO HTTP ou Drizzle. A composição em `app.ts` e no bootstrap fornece as implementações. O worker de ingresso segue o mesmo contrato de aplicação que a entrada HTTP.
 
-O executor em `common/` coordena fila, transação, snapshots, timers e publicação. Ele acessa o jogo ativo somente pelo `GameModule` do registro e mantém o estado do jogo opaco. O módulo `games/axb` contém regras puras e não ganha repositórios ou endpoints próprios sem necessidade real. Better Auth possui os fluxos padrão de registro, login e sessão; casos de uso próprios são reservados para regras adicionais do produto.
+O executor em `common/` coordena fila, transação, snapshots, timers e publicação. Ele acessa o jogo ativo somente pelo `GameModule` do registro e mantém o estado do jogo opaco. O módulo `modules/games/axb` contém regras puras e não ganha repositórios ou endpoints próprios sem necessidade real. Better Auth possui os fluxos padrão de registro, login e sessão; casos de uso próprios são reservados para regras adicionais do produto.
 
 Os adaptadores HTTP de cada módulo usam `infrastructure/http/{controllers,dtos,routes}` e colocam schemas OpenAPI em `routes/docs/`. O handler global em `common/infrastructure/http/` traduz erros de aplicação e validação para respostas HTTP; erros inesperados retornam 500 sem expor detalhes. A documentação da API é servida em `/api/docs/`, e o documento OpenAPI em `/api/docs/json`.
 
@@ -306,13 +306,13 @@ Os contratos vigentes estão em `apps/api/src/contracts/engine.ts` e `apps/api/s
 
 | Contrato | Responsabilidade |
 | :--- | :--- |
-| `GameInputMapper<TConfig, TCommand>` | Converter uma `NormalizedInteraction` em comando do jogo ou ignorá-la. |
+| `GameInputMapper<TConfig, TCommand>` | Converter comentários e contribuições de presente reconhecidas pelo núcleo (`GameInteraction`) em comandos do jogo ou ignorá-los. |
 | `GameEngine<TState, TConfig, TCommand>` | Criar estado inicial e aplicar comandos de forma pura, recebendo `ExecutionContext` explícito. |
 | `DecisionResult<TState>` | Devolver próximo estado, status, eventos e pedidos declarativos de timer; não executa I/O. |
 | `GameProjection<TState, TConfig, TProjection>` | Produzir os dados públicos do overlay a partir do estado e de `ProjectionMeta`. |
 | `GameModule<TState, TConfig, TProjection, TCommand>` | Reunir identidade, versão, mapper, engine, projection e validação opcional de configuração. |
 
-`NormalizedInteraction` é definido em `contracts/ingress.ts`, com variantes de comentário e presente. A migração física do A x B para `modules/games/axb/` não altera essas interfaces nem as regras do jogo.
+`NormalizedInteraction`, em `contracts/ingress.ts`, representa fatos normalizados recebidos da origem. Para presentes, contém `resourceKey`, contagem cumulativa e identidade de sequência quando disponível. Antes de chamar o mapper, o núcleo remove duplicatas, reconhece apenas novas unidades e emite um `RecognizedGiftContribution` com `resourceKey` e `units`; o mapper do jogo não recebe contagem cumulativa nem identidade de combo. O núcleo também persiste o cursor de reconhecimento e a contribuição na mesma transação, para que a entrega repetida não gere unidades duplicadas. A operação explícita `RESUME` da engine A x B drena as contribuições pendentes FIFO antes de o caso de uso aceitar novos eventos. As interfaces continuam internas a `apps/api`; a organização física do jogo fica em `modules/games/axb/` e o registry em `common/registry/`.
 
 ---
 

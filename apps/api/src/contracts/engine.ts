@@ -1,4 +1,4 @@
-import type { NormalizedInteraction } from './ingress.js';
+import type { GameInteraction } from './ingress.js';
 
 export interface ExecutionContext {
   readonly timestamp: number;
@@ -35,7 +35,7 @@ export interface ProjectionMeta {
 
 export interface GameInputMapper<TConfig = unknown, TCommand = unknown> {
   mapInteraction(
-    interaction: NormalizedInteraction,
+    interaction: GameInteraction,
     config: TConfig,
   ): TCommand | null;
 }

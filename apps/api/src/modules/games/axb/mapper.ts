@@ -1,10 +1,10 @@
-import type { GameInputMapper } from '../../contracts/engine.js';
-import type { NormalizedInteraction } from '../../contracts/ingress.js';
+import type { GameInputMapper } from '../../../contracts/engine.js';
+import type { GameInteraction } from '../../../contracts/ingress.js';
 import type { AxBCommand, AxBConfig } from './types.js';
 
 export class AxBInputMapper implements GameInputMapper<AxBConfig, AxBCommand> {
   mapInteraction(
-    interaction: NormalizedInteraction,
+    interaction: GameInteraction,
     config: AxBConfig,
   ): AxBCommand | null {
     if (interaction.type === 'comment') {
@@ -31,26 +31,20 @@ export class AxBInputMapper implements GameInputMapper<AxBConfig, AxBCommand> {
       return null;
     }
 
-    if (interaction.type === 'gift') {
+    if (interaction.type === 'gift_contribution') {
       const rule = config.giftRules.find(
-        (r) => r.giftId === interaction.giftId,
+        (r) => r.resourceKey === interaction.resourceKey,
       );
       if (!rule) {
         return null;
       }
 
-      const comboKey = interaction.groupId
-        ? `${interaction.userId}:${interaction.giftId}:${interaction.groupId}`
-        : `${interaction.userId}:${interaction.giftId}`;
-
       return {
         type: 'GIFT',
         team: rule.targetTeam,
         pointsPerUnit: rule.pointsPerUnit,
-        giftId: interaction.giftId,
-        userId: interaction.userId,
-        count: interaction.repeatCount,
-        comboKey,
+        resourceKey: interaction.resourceKey,
+        units: interaction.units,
         timestamp: interaction.timestamp,
       };
     }

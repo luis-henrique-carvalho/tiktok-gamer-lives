@@ -65,25 +65,25 @@ describe('AxB Schema Validation (Zod)', () => {
 
   it('validates gift rules schema correctly', () => {
     const validRule = AxBGiftRuleSchema.safeParse({
-      giftId: '5655',
+      resourceKey: 'tiktok:gift:5655',
       targetTeam: 'A',
       pointsPerUnit: 10,
     });
     expect(validRule.success).toBe(true);
 
     const invalidPoints = AxBGiftRuleSchema.safeParse({
-      giftId: '5655',
+      resourceKey: 'tiktok:gift:5655',
       targetTeam: 'A',
       pointsPerUnit: 0,
     });
     expect(invalidPoints.success).toBe(false);
 
-    const emptyGiftId = AxBGiftRuleSchema.safeParse({
-      giftId: '  ',
+    const emptyResourceKey = AxBGiftRuleSchema.safeParse({
+      resourceKey: '',
       targetTeam: 'B',
       pointsPerUnit: 10,
     });
-    expect(emptyGiftId.success).toBe(false);
+    expect(emptyResourceKey.success).toBe(false);
   });
 
   it('enforces teamName length between 1 and 24 characters (PRD § 5)', () => {
@@ -136,7 +136,7 @@ describe('AxB Schema Validation (Zod)', () => {
 
   it('enforces giftRules maximum of 6 rules (PRD § 5)', () => {
     const sixRules = Array.from({ length: 6 }, (_, i) => ({
-      giftId: `gift-${i}`,
+      resourceKey: `source:gift:${i}`,
       targetTeam: i % 2 === 0 ? ('A' as const) : ('B' as const),
       pointsPerUnit: 10,
     }));
@@ -147,7 +147,7 @@ describe('AxB Schema Validation (Zod)', () => {
     expect(validSix.success).toBe(true);
 
     const sevenRules = Array.from({ length: 7 }, (_, i) => ({
-      giftId: `gift-${i}`,
+      resourceKey: `source:gift:${i}`,
       targetTeam: i % 2 === 0 ? ('A' as const) : ('B' as const),
       pointsPerUnit: 10,
     }));

@@ -1,4 +1,4 @@
-import type { GameModule } from '../../contracts/engine.js';
+import type { GameModule } from '../../../contracts/engine.js';
 import { AxBGameEngine } from './engine.js';
 import { AxBInputMapper } from './mapper.js';
 import { AxBProjectionBuilder } from './projection.js';

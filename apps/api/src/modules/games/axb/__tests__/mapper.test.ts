@@ -3,9 +3,9 @@ import { AxBInputMapper } from '../mapper.js';
 import { DEFAULT_AXB_CONFIG } from '../constants.js';
 import type {
   CommentInteraction,
-  GiftInteraction,
-  NormalizedInteraction,
-} from '../../../contracts/ingress.js';
+  GameInteraction,
+  RecognizedGiftContribution,
+} from '../../../../contracts/ingress.js';
 
 describe('AxBInputMapper (TDD Red -> Green)', () => {
   const mapper = new AxBInputMapper();
@@ -122,75 +122,46 @@ describe('AxBInputMapper (TDD Red -> Green)', () => {
     });
   });
 
-  describe('RG-04 & RG-07: Gifts to Gift Commands', () => {
-    it('maps configured gift to GIFT command targeting team and with pointsPerUnit', () => {
-      const giftInteraction: GiftInteraction = {
-        id: 'ev-gift-1',
+  describe('RG-04 & RG-07: Recognized gift contributions', () => {
+    it('maps recognized units for a configured resource to points for its team', () => {
+      const contribution: RecognizedGiftContribution = {
+        id: 'contribution-1',
         source: 'TIKTOK_LIVE',
-        type: 'gift',
+        type: 'gift_contribution',
         userId: 'donor-1',
         userName: 'SuperFan',
-        giftId: '5655', // Rose -> Team A, 10 pts
-        giftName: 'Rosa',
-        diamondCount: 1,
-        repeatCount: 3,
-        groupId: 'combo-123',
+        resourceKey: 'tiktok:gift:5655',
+        units: 3,
         timestamp: 4000,
       };
 
-      const result = mapper.mapInteraction(giftInteraction, DEFAULT_AXB_CONFIG);
+      const result = mapper.mapInteraction(contribution, DEFAULT_AXB_CONFIG);
       expect(result).toEqual({
         type: 'GIFT',
         team: 'A',
         pointsPerUnit: 10,
-        giftId: '5655',
-        userId: 'donor-1',
-        count: 3,
-        comboKey: 'donor-1:5655:combo-123',
+        resourceKey: 'tiktok:gift:5655',
+        units: 3,
         timestamp: 4000,
       });
     });
 
-    it('creates comboKey without groupId if groupId is not provided', () => {
-      const giftInteraction: GiftInteraction = {
-        id: 'ev-gift-2',
-        source: 'TIKTOK_LIVE',
-        type: 'gift',
-        userId: 'donor-2',
-        userName: 'Supporter',
-        giftId: '5879', // Heart -> Team B, 10 pts
-        giftName: 'Coração',
-        diamondCount: 1,
-        repeatCount: 1,
-        timestamp: 4050,
-      };
-
-      const result = mapper.mapInteraction(giftInteraction, DEFAULT_AXB_CONFIG);
-      expect(result).toEqual({
-        type: 'GIFT',
-        team: 'B',
-        pointsPerUnit: 10,
-        giftId: '5879',
-        userId: 'donor-2',
-        count: 1,
-        comboKey: 'donor-2:5879',
-        timestamp: 4050,
-      });
-    });
-
     it('returns null for unmapped / unknown gifts (RG-07)', () => {
-      const unknownGift: GiftInteraction = {
-        id: 'ev-gift-unknown',
+      const unknownContribution: RecognizedGiftContribution = {
+        id: 'contribution-unknown',
         source: 'TIKTOK_LIVE',
-        type: 'gift',
+        type: 'gift_contribution',
         userId: 'donor-99',
         userName: 'Anon',
-        giftId: 'unmapped-gift-9999',
-        repeatCount: 1,
+        resourceKey: 'tiktok:gift:unmapped-9999',
+        units: 1,
         timestamp: 5000,
       };
 
-      const result = mapper.mapInteraction(unknownGift, DEFAULT_AXB_CONFIG);
+      const result = mapper.mapInteraction(
+        unknownContribution,
+        DEFAULT_AXB_CONFIG,
+      );
       expect(result).toBeNull();
     });
 
@@ -202,7 +173,7 @@ describe('AxBInputMapper (TDD Red -> Green)', () => {
         userId: 'donor-1',
         userName: 'Fan',
         timestamp: 6000,
-      } as unknown as NormalizedInteraction;
+      } as unknown as GameInteraction;
 
       const result = mapper.mapInteraction(unsupported, DEFAULT_AXB_CONFIG);
       expect(result).toBeNull();

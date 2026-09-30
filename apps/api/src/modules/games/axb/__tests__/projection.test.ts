@@ -3,7 +3,7 @@ import { AxBProjectionBuilder } from '../projection.js';
 import { DEFAULT_AXB_CONFIG } from '../constants.js';
 import { createInitialAxBState } from '../engine.js';
 import type { AxBState } from '../types.js';
-import type { ProjectionMeta } from '../../../contracts/engine.js';
+import type { ProjectionMeta } from '../../../../contracts/engine.js';
 
 describe('AxBProjectionBuilder (TDD Red -> Green)', () => {
   const projection = new AxBProjectionBuilder();
@@ -70,9 +70,8 @@ describe('AxBProjectionBuilder (TDD Red -> Green)', () => {
           type: 'GIFT',
           team: 'A',
           pointsPerUnit: 10,
-          giftId: '5655',
-          userId: 'u1',
-          count: 1,
+          resourceKey: 'tiktok:gift:5655',
+          units: 1,
           timestamp: 30000,
         },
       ],
@@ -121,18 +120,16 @@ describe('AxBProjectionBuilder (TDD Red -> Green)', () => {
           type: 'GIFT',
           team: 'A',
           pointsPerUnit: 10,
-          giftId: '5655',
-          userId: 'u1',
-          count: 1,
+          resourceKey: 'tiktok:gift:5655',
+          units: 1,
           timestamp: 30000,
         },
         {
           type: 'GIFT',
           team: 'B',
           pointsPerUnit: 10,
-          giftId: '5879',
-          userId: 'u2',
-          count: 2,
+          resourceKey: 'tiktok:gift:5879',
+          units: 2,
           timestamp: 30050,
         },
       ],

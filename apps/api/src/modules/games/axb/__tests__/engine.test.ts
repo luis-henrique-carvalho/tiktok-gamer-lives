@@ -9,7 +9,7 @@ import type {
   AxBState,
   AxBVoteCommand,
 } from '../types.js';
-import type { ExecutionContext } from '../../../contracts/engine.js';
+import type { ExecutionContext } from '../../../../contracts/engine.js';
 
 describe('AxBGameEngine (TDD Red -> Green)', () => {
   const engine = new AxBGameEngine();
@@ -32,7 +32,6 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
       expect(state.roundStatus).toBe('ACTIVE');
       expect(state.score).toEqual({ teamA: 0, teamB: 0 });
       expect(state.userCommentCooldowns).toEqual({});
-      expect(state.activeCombos).toEqual({});
       expect(state.pendingContributions).toEqual([]);
       expect(state.history).toEqual([]);
     });
@@ -294,17 +293,15 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
     });
   });
 
-  describe('RG-04 & RG-05: Gifts and Combo Delta Recognition', () => {
+  describe('RG-04 & RG-05: Recognized gift units', () => {
     it('scores full units for standalone gift', () => {
       const initialState = createInitialAxBState();
       const giftCmd: AxBGiftCommand = {
         type: 'GIFT',
         team: 'A',
         pointsPerUnit: 10,
-        giftId: '5655',
-        userId: 'donor-1',
-        count: 2,
-        comboKey: 'donor-1:5655',
+        resourceKey: 'tiktok:gift:5655',
+        units: 2,
         timestamp: 10000,
       };
 
@@ -317,117 +314,19 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
 
       expect(result.status).toBe('APPLIED');
       expect(result.nextState.score.teamA).toBe(20); // 2 * 10
-      expect(result.nextState.activeCombos['donor-1:5655']).toBe(2);
-    });
-
-    it('recognizes strictly positive delta in cumulative combos (1 -> 2 -> 3 -> 3 final)', () => {
-      let state = createInitialAxBState();
-
-      // Combo 1: count = 1
-      const cmd1: AxBGiftCommand = {
-        type: 'GIFT',
-        team: 'B',
-        pointsPerUnit: 10,
-        giftId: '5879',
-        userId: 'donor-1',
-        count: 1,
-        comboKey: 'donor-1:5879:seq-1',
-        timestamp: 10000,
-      };
-      let res = engine.applyCommand(
-        state,
-        cmd1,
-        activeContext,
-        DEFAULT_AXB_CONFIG,
-      );
-      expect(res.nextState.score.teamB).toBe(10);
-      expect(res.nextState.activeCombos['donor-1:5879:seq-1']).toBe(1);
-      state = res.nextState;
-
-      // Combo 2: count = 2 -> delta = 1 -> +10 pts
-      const cmd2: AxBGiftCommand = {
-        ...cmd1,
-        count: 2,
-        timestamp: 10100,
-      };
-      res = engine.applyCommand(state, cmd2, activeContext, DEFAULT_AXB_CONFIG);
-      expect(res.nextState.score.teamB).toBe(20);
-      expect(res.nextState.activeCombos['donor-1:5879:seq-1']).toBe(2);
-      state = res.nextState;
-
-      // Combo 3: count = 3 -> delta = 1 -> +10 pts
-      const cmd3: AxBGiftCommand = {
-        ...cmd1,
-        count: 3,
-        timestamp: 10200,
-      };
-      res = engine.applyCommand(state, cmd3, activeContext, DEFAULT_AXB_CONFIG);
-      expect(res.nextState.score.teamB).toBe(30);
-      expect(res.nextState.activeCombos['donor-1:5879:seq-1']).toBe(3);
-      state = res.nextState;
-
-      // Combo final: count = 3 repeated -> delta = 0 -> 0 pts added
-      const cmdFinal: AxBGiftCommand = {
-        ...cmd1,
-        count: 3,
-        timestamp: 10300,
-      };
-      res = engine.applyCommand(
-        state,
-        cmdFinal,
-        activeContext,
-        DEFAULT_AXB_CONFIG,
-      );
-      expect(res.status).toBe('IGNORED');
-      expect(res.reason).toBe('DUPLICATE_OR_OLD_COMBO_COUNT');
-      expect(res.nextState.score.teamB).toBe(30);
-      expect(res.nextState.activeCombos['donor-1:5879:seq-1']).toBe(3);
-    });
-
-    it('ignores out-of-order gift message with lower count than already recognized', () => {
-      const state: AxBState = {
-        ...createInitialAxBState(),
-        score: { teamA: 50, teamB: 0 },
-        activeCombos: { 'donor-1:5655': 5 },
-      };
-
-      const outOfOrderCmd: AxBGiftCommand = {
-        type: 'GIFT',
-        team: 'A',
-        pointsPerUnit: 10,
-        giftId: '5655',
-        userId: 'donor-1',
-        count: 3, // 3 < 5
-        comboKey: 'donor-1:5655',
-        timestamp: 10500,
-      };
-
-      const result = engine.applyCommand(
-        state,
-        outOfOrderCmd,
-        activeContext,
-        DEFAULT_AXB_CONFIG,
-      );
-
-      expect(result.status).toBe('IGNORED');
-      expect(result.reason).toBe('DUPLICATE_OR_OLD_COMBO_COUNT');
-      expect(result.nextState.score.teamA).toBe(50);
-      expect(result.nextState.activeCombos['donor-1:5655']).toBe(5);
     });
   });
 
   describe('RG-08: Gifts Received During Pause or Interval', () => {
-    it('defers mapped gift when paused and adds resolved delta to pendingContributions', () => {
+    it('defers already recognized gift units when paused', () => {
       const state = createInitialAxBState();
 
       const giftCmd: AxBGiftCommand = {
         type: 'GIFT',
         team: 'A',
         pointsPerUnit: 50,
-        giftId: '5827',
-        userId: 'donor-3',
-        count: 2,
-        comboKey: 'donor-3:5827',
+        resourceKey: 'tiktok:gift:5827',
+        units: 2,
         timestamp: 11000,
       };
 
@@ -440,67 +339,12 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
 
       expect(result.status).toBe('DEFERRED');
       expect(result.nextState.score.teamA).toBe(0); // Score NOT increased yet
-      expect(result.nextState.activeCombos['donor-3:5827']).toBe(2);
       expect(result.nextState.pendingContributions).toHaveLength(1);
       expect(result.nextState.pendingContributions[0]).toMatchObject({
         type: 'GIFT',
         team: 'A',
         pointsPerUnit: 50,
-        count: 2,
-      });
-    });
-
-    it('recognizes combo delta only once during pause even if repeated', () => {
-      let state = createInitialAxBState();
-
-      const giftCmd1: AxBGiftCommand = {
-        type: 'GIFT',
-        team: 'A',
-        pointsPerUnit: 10,
-        giftId: '5655',
-        userId: 'donor-4',
-        count: 1,
-        comboKey: 'donor-4:5655',
-        timestamp: 11000,
-      };
-
-      let res = engine.applyCommand(
-        state,
-        giftCmd1,
-        pausedContext,
-        DEFAULT_AXB_CONFIG,
-      );
-      expect(res.status).toBe('DEFERRED');
-      expect(res.nextState.pendingContributions).toHaveLength(1);
-      state = res.nextState;
-
-      // Repeat count 1 while paused
-      res = engine.applyCommand(
-        state,
-        giftCmd1,
-        pausedContext,
-        DEFAULT_AXB_CONFIG,
-      );
-      expect(res.status).toBe('IGNORED');
-      expect(res.nextState.pendingContributions).toHaveLength(1); // No duplicate added
-      state = res.nextState;
-
-      // Count 3 while paused (delta = 2)
-      const giftCmd3: AxBGiftCommand = {
-        ...giftCmd1,
-        count: 3,
-        timestamp: 11100,
-      };
-      res = engine.applyCommand(
-        state,
-        giftCmd3,
-        pausedContext,
-        DEFAULT_AXB_CONFIG,
-      );
-      expect(res.status).toBe('DEFERRED');
-      expect(res.nextState.pendingContributions).toHaveLength(2);
-      expect(res.nextState.pendingContributions[1]).toMatchObject({
-        count: 2, // Recognized delta = 3 - 1 = 2
+        units: 2,
       });
     });
 
@@ -514,10 +358,8 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
         type: 'GIFT',
         team: 'B',
         pointsPerUnit: 10,
-        giftId: '5879',
-        userId: 'donor-5',
-        count: 1,
-        comboKey: 'donor-5:5879',
+        resourceKey: 'tiktok:gift:5879',
+        units: 1,
         timestamp: 12000,
       };
 
@@ -531,6 +373,69 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
       expect(result.status).toBe('DEFERRED');
       expect(result.nextState.score.teamB).toBe(0);
       expect(result.nextState.pendingContributions).toHaveLength(1);
+    });
+
+    it('applies FIFO gifts on explicit resume before later votes and keeps the paused round score', () => {
+      const config: AxBConfig = {
+        ...DEFAULT_AXB_CONFIG,
+        scoreGoal: 10,
+      };
+      const pausedState: AxBState = {
+        ...createInitialAxBState(),
+        score: { teamA: 4, teamB: 2 },
+        pendingContributions: [
+          {
+            type: 'GIFT',
+            team: 'A',
+            pointsPerUnit: 10,
+            resourceKey: 'tiktok:gift:5655',
+            units: 1,
+            timestamp: 9000,
+          },
+          {
+            type: 'GIFT',
+            team: 'B',
+            pointsPerUnit: 10,
+            resourceKey: 'tiktok:gift:5879',
+            units: 1,
+            timestamp: 9100,
+          },
+        ],
+      };
+
+      const resumed = engine.applyCommand(
+        pausedState,
+        { type: 'RESUME', timestamp: 10000 },
+        activeContext,
+        config,
+      );
+
+      expect(resumed.roundEnded).toBe(true);
+      expect(resumed.winnerTeamId).toBe('A');
+      expect(resumed.nextState.currentRound).toBe(1);
+      expect(resumed.nextState.roundStatus).toBe('INTERVAL');
+      expect(resumed.nextState.score).toEqual({ teamA: 14, teamB: 2 });
+      expect(resumed.nextState.pendingContributions).toHaveLength(1);
+      expect(resumed.nextState.pendingContributions[0]).toMatchObject({
+        team: 'B',
+        units: 1,
+      });
+
+      const laterVote = engine.applyCommand(
+        resumed.nextState,
+        {
+          type: 'VOTE',
+          team: 'B',
+          userId: 'later-voter',
+          timestamp: 10001,
+        },
+        activeContext,
+        config,
+      );
+
+      expect(laterVote.status).toBe('IGNORED');
+      expect(laterVote.reason).toBe('ROUND_NOT_ACTIVE');
+      expect(laterVote.nextState.score).toEqual({ teamA: 14, teamB: 2 });
     });
   });
 
@@ -553,9 +458,8 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
         type: 'GIFT',
         team: 'A',
         pointsPerUnit: 50,
-        giftId: '5827',
-        userId: 'winner-donor',
-        count: 1,
+        resourceKey: 'tiktok:gift:5827',
+        units: 1,
         timestamp: 20000,
       };
 
@@ -655,18 +559,16 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
             type: 'GIFT',
             team: 'A',
             pointsPerUnit: 10,
-            giftId: '5655',
-            userId: 'donor-1',
-            count: 5, // 50 points
+            resourceKey: 'tiktok:gift:5655',
+            units: 5, // 50 points
             timestamp: 10500,
           },
           {
             type: 'GIFT',
             team: 'B',
             pointsPerUnit: 50,
-            giftId: '5827',
-            userId: 'donor-2',
-            count: 2, // 100 points
+            resourceKey: 'tiktok:gift:5827',
+            units: 2, // 100 points
             timestamp: 10600,
           },
         ],
@@ -706,9 +608,8 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
         type: 'GIFT',
         team: 'A',
         pointsPerUnit: 10,
-        giftId: '5655',
-        userId: 'donor-1',
-        count: 50, // 500 pts
+        resourceKey: 'tiktok:gift:5655',
+        units: 50, // 500 pts
         timestamp: 10100,
       };
 
@@ -716,9 +617,8 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
         type: 'GIFT',
         team: 'A',
         pointsPerUnit: 10,
-        giftId: '5655',
-        userId: 'donor-1',
-        count: 60, // 600 pts -> 500 + 600 = 1100 >= 1000 -> WINS ROUND 2!
+        resourceKey: 'tiktok:gift:5655',
+        units: 60, // 600 pts -> 500 + 600 = 1100 >= 1000 -> WINS ROUND 2!
         timestamp: 10200,
       };
 
@@ -726,9 +626,8 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
         type: 'GIFT',
         team: 'B',
         pointsPerUnit: 50,
-        giftId: '5827',
-        userId: 'donor-2',
-        count: 2, // 100 pts -> Must stay pending for Round 3!
+        resourceKey: 'tiktok:gift:5827',
+        units: 2, // 100 pts -> Must stay pending for Round 3!
         timestamp: 10300,
       };
 
@@ -788,9 +687,8 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
         type: 'GIFT',
         team: 'B',
         pointsPerUnit: 50,
-        giftId: '5827',
-        userId: 'donor-b',
-        count: 20, // 1000 pts -> WINS ROUND 2 FOR TEAM B!
+        resourceKey: 'tiktok:gift:5827',
+        units: 20, // 1000 pts -> WINS ROUND 2 FOR TEAM B!
         timestamp: 10200,
       };
 

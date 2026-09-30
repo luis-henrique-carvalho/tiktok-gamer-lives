@@ -4,7 +4,7 @@ import type {
   GameEngine,
   GameEvent,
   TimerRequest,
-} from '../../contracts/engine.js';
+} from '../../../contracts/engine.js';
 import { DEFAULT_AXB_CONFIG } from './constants.js';
 import { AxBConfigSchema } from './schema.js';
 import type {
@@ -22,7 +22,6 @@ export function createInitialAxBState(_config?: AxBConfig): AxBState {
     roundStatus: 'ACTIVE',
     score: { teamA: 0, teamB: 0 },
     userCommentCooldowns: {},
-    activeCombos: {},
     pendingContributions: [],
     history: [],
   };
@@ -52,6 +51,8 @@ export class AxBGameEngine implements GameEngine<
         return this.applyVote(state, command, context, config);
       case 'GIFT':
         return this.applyGift(state, command, context, config);
+      case 'RESUME':
+        return this.applyResume(state, context, config);
       case 'INTERVAL_EXPIRED':
         return this.applyIntervalExpired(state, command, context, config);
       default:
@@ -114,7 +115,6 @@ export class AxBGameEngine implements GameEngine<
       newScoreA,
       newScoreB,
       nextUserCooldowns,
-      nextActiveCombos: state.activeCombos,
       context,
       config,
     });
@@ -126,37 +126,12 @@ export class AxBGameEngine implements GameEngine<
     context: ExecutionContext,
     config: AxBConfig,
   ): DecisionResult<AxBState> {
-    const comboKey = command.comboKey ?? `${command.userId}:${command.giftId}`;
-    const lastRecognizedCount = state.activeCombos[comboKey] ?? 0;
-
-    // RG-05: Only recognize strictly positive delta from cumulative combos
-    const deltaUnits = command.count - lastRecognizedCount;
-    if (deltaUnits <= 0) {
-      return {
-        nextState: state,
-        status: 'IGNORED',
-        reason: 'DUPLICATE_OR_OLD_COMBO_COUNT',
-      };
-    }
-
-    const nextActiveCombos: Record<string, number> = {
-      ...state.activeCombos,
-      [comboKey]: command.count,
-    };
-
-    // RG-08: Mapped gifts received during pause or interval are enqueued in pendingContributions
+    // Gift units have already been recognized and deduplicated by the core.
+    // RG-08: Keep recognized contributions FIFO while paused or in the interval.
     if (context.isPaused || state.roundStatus !== 'ACTIVE') {
-      const pendingCmd: AxBGiftCommand = {
-        ...command,
-        count: deltaUnits,
-        comboKey: undefined,
-      };
-
-      const nextPending = [...state.pendingContributions, pendingCmd];
       const nextState: AxBState = {
         ...state,
-        activeCombos: nextActiveCombos,
-        pendingContributions: nextPending,
+        pendingContributions: [...state.pendingContributions, command],
       };
 
       return {
@@ -166,8 +141,8 @@ export class AxBGameEngine implements GameEngine<
       };
     }
 
-    // RG-04 & RG-05: In active round, points = deltaUnits * pointsPerUnit
-    const earnedPoints = deltaUnits * command.pointsPerUnit;
+    // RG-04 & RG-05: Convert only the units recognized by the core into points.
+    const earnedPoints = command.units * command.pointsPerUnit;
     const newScoreA =
       state.score.teamA + (command.team === 'A' ? earnedPoints : 0);
     const newScoreB =
@@ -178,7 +153,56 @@ export class AxBGameEngine implements GameEngine<
       newScoreA,
       newScoreB,
       nextUserCooldowns: state.userCommentCooldowns,
-      nextActiveCombos,
+      context,
+      config,
+    });
+  }
+
+  private applyResume(
+    state: AxBState,
+    context: ExecutionContext,
+    config: AxBConfig,
+  ): DecisionResult<AxBState> {
+    if (context.isPaused) {
+      return { nextState: state, status: 'DEFERRED', reason: 'SESSION_PAUSED' };
+    }
+
+    if (state.roundStatus !== 'ACTIVE') {
+      return {
+        nextState: state,
+        status: 'IGNORED',
+        reason: 'ROUND_NOT_ACTIVE',
+      };
+    }
+
+    const { scoreA, scoreB, immediateWinner, victoryIndex } =
+      this.evaluatePendingContributions(
+        state.pendingContributions,
+        config.scoreGoal,
+        state.score,
+      );
+
+    if (immediateWinner === null) {
+      return {
+        nextState: {
+          ...state,
+          score: { teamA: scoreA, teamB: scoreB },
+          pendingContributions: [],
+        },
+        status: 'APPLIED',
+      };
+    }
+
+    const resumedState: AxBState = {
+      ...state,
+      pendingContributions: state.pendingContributions.slice(victoryIndex + 1),
+    };
+
+    return this.checkVictoryAndAdvance({
+      state: resumedState,
+      newScoreA: scoreA,
+      newScoreB: scoreB,
+      nextUserCooldowns: state.userCommentCooldowns,
       context,
       config,
     });
@@ -206,66 +230,34 @@ export class AxBGameEngine implements GameEngine<
       };
     }
 
-    // RG-11: Start next round with score reset to 0
+    // RG-11: Start next round with score reset to 0, then apply pending in FIFO.
     const nextRoundNumber = state.currentRound + 1;
-
-    // RG-12: Apply pending contributions in FIFO order
     const { scoreA, scoreB, immediateWinner, victoryIndex } =
       this.evaluatePendingContributions(
         state.pendingContributions,
         config.scoreGoal,
+        { teamA: 0, teamB: 0 },
       );
 
-    // RG-12: If pending contribution caused victory, finish immediately and preserve remaining pending
     if (immediateWinner !== null) {
-      const remainingPending = state.pendingContributions.slice(
-        victoryIndex + 1,
-      );
-
-      const roundHistory: AxBRoundHistory = {
-        roundNumber: nextRoundNumber,
-        winner: immediateWinner,
-        finalScore: { teamA: scoreA, teamB: scoreB },
-        completedAt: context.timestamp,
-      };
-
-      const timerRequest: TimerRequest = {
-        id: `interval-round-${nextRoundNumber}`,
-        delayMs: config.intervalDurationMs,
-        type: 'INTERVAL_EXPIRED',
-        payload: { round: nextRoundNumber },
-      };
-
-      const event: GameEvent = {
-        type: 'ROUND_WON',
-        payload: {
-          round: nextRoundNumber,
-          winner: immediateWinner,
-          score: { teamA: scoreA, teamB: scoreB },
+      return this.checkVictoryAndAdvance({
+        state: {
+          ...state,
+          currentRound: nextRoundNumber,
+          roundStatus: 'ACTIVE',
+          score: { teamA: 0, teamB: 0 },
+          pendingContributions: state.pendingContributions.slice(
+            victoryIndex + 1,
+          ),
         },
-        timestamp: context.timestamp,
-      };
-
-      const nextState: AxBState = {
-        ...state,
-        currentRound: nextRoundNumber,
-        roundStatus: 'INTERVAL',
-        score: { teamA: scoreA, teamB: scoreB },
-        pendingContributions: remainingPending,
-        history: [...state.history, roundHistory],
-      };
-
-      return {
-        nextState,
-        status: 'APPLIED',
-        roundEnded: true,
-        winnerTeamId: immediateWinner,
-        timerRequests: [timerRequest],
-        events: [event],
-      };
+        newScoreA: scoreA,
+        newScoreB: scoreB,
+        nextUserCooldowns: state.userCommentCooldowns,
+        context,
+        config,
+      });
     }
 
-    // No victory from pending contributions -> round remains ACTIVE
     const nextState: AxBState = {
       ...state,
       currentRound: nextRoundNumber,
@@ -281,40 +273,39 @@ export class AxBGameEngine implements GameEngine<
   }
 
   private evaluatePendingContributions(
-    pendingContributions: readonly AxBCommand[],
+    pendingContributions: readonly AxBGiftCommand[],
     scoreGoal: number,
+    initialScore: { teamA: number; teamB: number },
   ): {
     scoreA: number;
     scoreB: number;
     immediateWinner: AxBTeamId | null;
     victoryIndex: number;
   } {
-    let scoreA = 0;
-    let scoreB = 0;
+    let scoreA = initialScore.teamA;
+    let scoreB = initialScore.teamB;
     let immediateWinner: AxBTeamId | null = null;
     let victoryIndex = -1;
 
     for (let i = 0; i < pendingContributions.length; i++) {
       const contribution = pendingContributions[i];
-      if (contribution.type === 'GIFT') {
-        const points = contribution.count * contribution.pointsPerUnit;
-        if (contribution.team === 'A') {
-          scoreA += points;
-        } else {
-          scoreB += points;
-        }
+      const points = contribution.units * contribution.pointsPerUnit;
+      if (contribution.team === 'A') {
+        scoreA += points;
+      } else {
+        scoreB += points;
+      }
 
-        if (scoreA >= scoreGoal) {
-          immediateWinner = 'A';
-          victoryIndex = i;
-          break;
-        }
+      if (scoreA >= scoreGoal) {
+        immediateWinner = 'A';
+        victoryIndex = i;
+        break;
+      }
 
-        if (scoreB >= scoreGoal) {
-          immediateWinner = 'B';
-          victoryIndex = i;
-          break;
-        }
+      if (scoreB >= scoreGoal) {
+        immediateWinner = 'B';
+        victoryIndex = i;
+        break;
       }
     }
 
@@ -326,19 +317,11 @@ export class AxBGameEngine implements GameEngine<
     newScoreA: number;
     newScoreB: number;
     nextUserCooldowns: Readonly<Record<string, number>>;
-    nextActiveCombos: Readonly<Record<string, number>>;
     context: ExecutionContext;
     config: AxBConfig;
   }): DecisionResult<AxBState> {
-    const {
-      state,
-      newScoreA,
-      newScoreB,
-      nextUserCooldowns,
-      nextActiveCombos,
-      context,
-      config,
-    } = params;
+    const { state, newScoreA, newScoreB, nextUserCooldowns, context, config } =
+      params;
 
     // RG-09 & RG-10: First contribution reaching or exceeding scoreGoal defines winner
     const winner: AxBTeamId | null =
@@ -378,7 +361,6 @@ export class AxBGameEngine implements GameEngine<
         roundStatus: 'INTERVAL',
         score: { teamA: newScoreA, teamB: newScoreB },
         userCommentCooldowns: nextUserCooldowns,
-        activeCombos: nextActiveCombos,
         history: [...state.history, roundHistory],
       };
 
@@ -396,7 +378,6 @@ export class AxBGameEngine implements GameEngine<
       ...state,
       score: { teamA: newScoreA, teamB: newScoreB },
       userCommentCooldowns: nextUserCooldowns,
-      activeCombos: nextActiveCombos,
     };
 
     return {

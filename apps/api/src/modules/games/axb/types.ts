@@ -7,7 +7,7 @@ export interface AxBTeamConfig {
 }
 
 export interface AxBGiftRule {
-  readonly giftId: string;
+  readonly resourceKey: string;
   readonly targetTeam: AxBTeamId;
   readonly pointsPerUnit: number;
 }
@@ -46,10 +46,13 @@ export interface AxBGiftCommand {
   readonly type: 'GIFT';
   readonly team: AxBTeamId;
   readonly pointsPerUnit: number;
-  readonly giftId: string;
-  readonly userId: string;
-  readonly count: number;
-  readonly comboKey?: string;
+  readonly resourceKey: string;
+  readonly units: number;
+  readonly timestamp: number;
+}
+
+export interface AxBResumeCommand {
+  readonly type: 'RESUME';
   readonly timestamp: number;
 }
 
@@ -59,15 +62,17 @@ export interface AxBIntervalExpiredCommand {
 }
 
 export type AxBCommand =
-  AxBVoteCommand | AxBGiftCommand | AxBIntervalExpiredCommand;
+  | AxBVoteCommand
+  | AxBGiftCommand
+  | AxBResumeCommand
+  | AxBIntervalExpiredCommand;
 
 export interface AxBState {
   readonly currentRound: number;
   readonly roundStatus: AxBRoundStatus;
   readonly score: AxBScore;
   readonly userCommentCooldowns: Readonly<Record<string, number>>;
-  readonly activeCombos: Readonly<Record<string, number>>;
-  readonly pendingContributions: readonly AxBCommand[];
+  readonly pendingContributions: readonly AxBGiftCommand[];
   readonly history: readonly AxBRoundHistory[];
 }
 

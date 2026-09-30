@@ -1,4 +1,7 @@
-import type { GameProjection, ProjectionMeta } from '../../contracts/engine.js';
+import type {
+  GameProjection,
+  ProjectionMeta,
+} from '../../../contracts/engine.js';
 import type {
   AxBConfig,
   AxBProjection,

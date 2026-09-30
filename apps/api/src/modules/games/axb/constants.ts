@@ -17,10 +17,10 @@ export const DEFAULT_TEAM_B: AxBTeamConfig = {
 };
 
 export const MVP_GIFT_RULES: readonly AxBGiftRule[] = [
-  { giftId: '5655', targetTeam: 'A', pointsPerUnit: 10 },
-  { giftId: '5879', targetTeam: 'B', pointsPerUnit: 10 },
-  { giftId: '5827', targetTeam: 'A', pointsPerUnit: 50 },
-  { giftId: '6064', targetTeam: 'B', pointsPerUnit: 50 },
+  { resourceKey: 'tiktok:gift:5655', targetTeam: 'A', pointsPerUnit: 10 },
+  { resourceKey: 'tiktok:gift:5879', targetTeam: 'B', pointsPerUnit: 10 },
+  { resourceKey: 'tiktok:gift:5827', targetTeam: 'A', pointsPerUnit: 50 },
+  { resourceKey: 'tiktok:gift:6064', targetTeam: 'B', pointsPerUnit: 50 },
 ];
 
 export const DEFAULT_AXB_CONFIG: AxBConfig = {

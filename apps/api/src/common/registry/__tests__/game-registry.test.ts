@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GameRegistry } from '../game-registry.js';
 import type { GameModule } from '../../../contracts/engine.js';
-import { axbGameModule } from '../../../games/axb/index.js';
+import { axbGameModule } from '../../../modules/games/axb/index.js';
 
 describe('GameRegistry (TDD Red -> Green)', () => {
   it('registers and retrieves a game module successfully', () => {

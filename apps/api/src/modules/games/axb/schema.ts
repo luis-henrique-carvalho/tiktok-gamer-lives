@@ -13,7 +13,7 @@ export const AxBTeamConfigSchema = z.object({
 });
 
 export const AxBGiftRuleSchema = z.object({
-  giftId: z.string().trim().min(1, 'giftId não pode ser vazio'),
+  resourceKey: z.string().min(1, 'resourceKey não pode ser vazio'),
   targetTeam: AxBTeamIdSchema,
   pointsPerUnit: z
     .number()
