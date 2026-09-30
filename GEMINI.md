@@ -1,37 +1,27 @@
 # Diretrizes e Fatos do Projeto — Plataforma de Lives Interativas
 
-> **Escopo**: Este arquivo estabelece os fatos permanentes, convenções inegociáveis e links para as especificações técnicas detalhadas deste repositório. Todo agente e desenvolvedor deve consultar e obedecer a estas regras.
+> **Escopo**: Este arquivo estabelece o índice oficial de especificações técnicas, convenções inegociáveis de governança e comandos canônicos deste repositório. Todo agente e desenvolvedor deve consultar e obedecer a estas regras.
 
 ---
 
 ## 1. Índice de Especificações Técnicas
 
-As especificações detalhadas do projeto estão modularizadas no diretório `docs/spec/`:
+Toda a arquitetura, regras de negócio e especificações detalhadas do projeto estão centralizadas no diretório `docs/`:
 
-- 📐 **[Especificação de Arquitetura](docs/spec/architecture.md)**: Arquitetura Hexagonal, Host Agnóstico, contratos SPI da engine (`GameInputMapper`, `GameEngine`, `GameProjection`), concorrência serial BullMQ (FIFO 1) e persistência de snapshots opacos em JSONB.
-- ⚙️ **[Especificação da Stack & Cobertura](docs/spec/stack.md)**: Detalhamento de bibliotecas, versões (Fastify, TanStack Start, React 19, Socket.IO, BullMQ, Redis, PostgreSQL 17, Drizzle ORM, Better Auth, Tailwind CSS v4, Zustand) e thresholds estritos de cobertura Vitest V8.
+- 📐 **[Especificação de Arquitetura](docs/spec/architecture.md)**: **Documento autoritativo único de arquitetura**. Descreve a Arquitetura Hexagonal, Host Agnóstico, contratos SPI da engine (`GameInputMapper`, `GameEngine`, `GameProjection`), concorrência serial BullMQ (FIFO 1), persistência de snapshots opacos em JSONB e o desacoplamento estrito entre apps (Zero `packages/shared`).
+- ⚙️ **[Especificação da Stack & Cobertura](docs/spec/stack.md)**: Detalhamento de bibliotecas, versões (Fastify, TanStack Start, React 19, Socket.IO, BullMQ, Redis, PostgreSQL 17, Drizzle ORM, Better Auth, Tailwind CSS v4, Zustand) e thresholds estritos de cobertura Vitest V8 (**90% no Backend** e **85% no Frontend**).
 - 📋 **[Documento de Requisitos de Produto (PRD)](docs/prd-mvp-live-interativa.md)**: Regras de negócio, catálogo de presentes, sistema de combos, cooldowns e critérios de aceite do MVP.
 - 🗺️ **[Plano de Implementação Ativo (Walking Skeleton)](docs/plans/mvp-walking-skeleton.md)**: Roadmap executável e passos de implementação TDD do MVP.
 
 ---
 
-## 2. Invariantes de Arquitetura e Governança
+## 2. Invariantes de Governança e Qualidade
 
-### 2.1. Zero Pacote Compartilhado (`packages/shared` Proibido)
-- `apps/api` é a **autoridade do domínio**: schemas Zod, entidades, contratos da engine e regras residem no backend.
-- `apps/web` é um **consumidor independente**: declara seus próprios tipos locais para payloads de rede (REST + Socket.IO). Nunca importe código de `apps/api` dentro de `apps/web`.
-
-### 2.2. Host Agnóstico e Hexagonal
-- O Host da plataforma gerencia apenas infraestrutura, mensageria serial, timers e entrega de eventos.
-- O Host **não conhece** regras de jogos (torres, vidas, pontuações ou times).
-- Novas regras de jogo pertencem exclusivamente a `apps/api/src/modules/games/<game>/`.
-
-### 2.3. TDD Rigoroso & Cobertura de Testes
-- O ciclo **Red → Green → Refactor** é obrigatório para:
-  1. Regras do motor do jogo (ex: A x B).
-  2. Ingress Worker (deduplicação e buffer de combos).
-  3. Serial Executor (garantia estrita de concorrência 1 e FIFO).
-- A suite deve atingir os thresholds mínimos configurados em `docs/spec/stack.md` (**90% no backend** e **85% no frontend**).
+1. **Autoridade Arquitetural Única**: Toda decisão de design, portas, adaptadores, concorrência e contratos deve obedecer estritamente a [docs/spec/architecture.md](docs/spec/architecture.md).
+2. **Zero Pacote Compartilhado**: `apps/api` (autoridade do domínio) e `apps/web` (consumidor independente) são completamente isolados. O contrato entre eles é exclusivamente a rede (REST + Socket.IO). Proibido criar `packages/shared` ou importar código do backend no frontend.
+3. **Host Agnóstico**: O Host gerencia apenas infraestrutura, mensageria serial e timers. Regras de jogo residem unicamente em `apps/api/src/modules/games/<game>/`.
+4. **TDD Rigoroso & Cobertura**: Ciclo Red → Green → Refactor obrigatório no motor de jogo e workers seriais. Mínimo inegociável de **90% no backend** e **85% no frontend**.
+5. **Modo Strict Total**: Proibido uso de `any` em todo o monorepo.
 
 ---
 
