@@ -129,7 +129,7 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
 
 ---
 
-### Fase 2: Motor de Regras A x B & Game Registry (TDD no Domínio Puro)
+### Fase 2: Motor de Regras A x B & Game Registry (TDD no Domínio Puro) — `[CONCLUÍDA]`
 
 - **Objetivo**: Implementar o motor de regras determinístico do jogo **A x B** (`RG-01` a `RG-12`) e o catálogo `GameRegistry`, 100% puro e sem I/O, guiado por testes rigorosos. Todos os contratos, tipos e constantes são internos a `apps/api`.
 - **Metodologia**: **TDD Rigoroso (Red → Green)** usando Vitest.
