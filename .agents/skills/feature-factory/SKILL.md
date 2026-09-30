@@ -102,6 +102,10 @@ Se durante a pesquisa ou levantamento surgirem requisitos ambíguos, bifurcaçõ
   - Utilize o **`domain-modeling`** para assegurar que entidades, estados e nomes respeitem o modelo do domínio.
   - Utilize o **`codebase-design`** para planejar módulos profundos (*deep modules*) e definir explicitamente as costuras (*seams*) públicas onde os testes serão conectados.
   - Utilize o **`/plan`** para formalizar o documento técnico consolidando as decisões do `/grill-me`, incluir diagramas Mermaid de fluxo e persistir em `docs/plans/<feature-slug>.md`.
+  - **Pre-Mortem Multi-Perspectiva (Padrão `/boost`)**: Antes de fechar a especificação, avalie o plano sob 3 lentes:
+    1. *Lente de Produto/Regra*: O `/grill-me` resolveu todas as ambiguidades com o usuário?
+    2. *Lente de Resiliência/Concorrência*: Como o sistema se comporta sob rajadas (ex: 50 presentes/s)? O BullMQ FIFO e os timers lidam de forma determinística?
+    3. *Lente de Simplicidade (`ponytail`)*: Há abstrações desnecessárias? Podemos resolver com tipos e funções puras?
   - Sincronize com o artefato de planejamento interativo do Antigravity (`implementation_plan.md`).
 
 ---
@@ -145,10 +149,20 @@ Execute os builders **estritamente em sequência**:
     - **Eixo 1 (Spec)**: Avalia se os critérios de aceite foram cumpridos à risca e se houve *scope creep*.
     - **Eixo 2 (Standards & SOLID)**: Avalia se o código respeita o `GEMINI.md`, tipagem estrita, princípios SOLID e o catálogo de code smells (Bloaters, Couplers, Primitive Obsession).
     - **Auditoria de Complexidade (`ponytail-review`)**: Identifica abstrações mortas, duplicações e flexibilidade especulativa no diff.
-  - Caso existam defeitos críticos, o orquestrador devolve a demanda ao builder correspondente para correção.
+  - **Loop de Auto-Correção Autônomo (Padrão `/boost`)**: Se o validador ou os testes apontarem divergências, testes quebrados ou code smells críticos, o orquestrador não interrompe o usuário; ele re-injeta o diff e o log de erro no builder responsável para auto-correção iterativa até o `./scripts/verify.sh` passar 100%.
 
 ---
 
 ### 🛑 Gate Humano 3: Homologação Final
 - Apresente o resumo das alterações, status dos testes e o relatório de validação no `walkthrough.md`.
 - Aguarde o aval do usuário para finalizar e commitar a alteração.
+
+---
+
+### 🔄 Fase 5: Fechamento de Ciclo & Aprendizado Contínuo (`/learn`)
+- Ao concluir a homologação e realizar o commit:
+  - Dispare o protocolo do **`/learn`** para avaliar o que foi aprendido nesta entrega:
+    - Novas armadilhas técnicas superadas.
+    - Decisões arquiteturais ou de UX que devem virar regras perpétuas em `GEMINI.md`.
+    - Ajustes de playbooks e skills especializadas.
+  - Elabore a proposta de aprendizado em `learning_proposal.md` para validação humana, garantindo que o conhecimento nunca se perca entre sessões.
