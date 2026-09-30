@@ -27,9 +27,10 @@ Neste repositório, o agente primário da conversa atua EXCLUSIVAMENTE como **Or
    - **Verificação e Cobertura**: Subagente `test-verifier` (`./scripts/verify.sh` e testes de aceitação).
    - **Auditoria e Anti-Bloat**: Subagente `implementation-validator` (Code Review de 2 eixos: Spec e Padrões/SOLID).
 
-3. **Paralelismo Inteligente por Workspace**:
-   - Devido ao desacoplamento estrito (*Zero Shared Package*), `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) **PODEM e DEVEM ser despachados em paralelo** dentro de uma única chamada de `invoke_subagent`, acelerando radicalmente a entrega.
-   - Apenas arquivos compartilhados da raiz (`docker-compose.yml`, `package.json` raiz) ou a validação final (`test-verifier`) operam em sequência.
+3. **Paralelismo Duplo Inteligente (Construção e Validação)**:
+   - **Bloco 1 — Construção Concorrente**: Devido ao desacoplamento estrito (*Zero Shared Package*), `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) **PODEM e DEVEM ser despachados em paralelo** dentro de uma única chamada de `invoke_subagent`, acelerando radicalmente a entrega.
+   - **Bloco 2 — Validação & Auditoria Concorrentes**: Concluída a construção, `test-verifier` (execução da suíte `./scripts/verify.sh` e testes de aceitação) e `implementation-validator` (leitura e auditoria do diff contra Spec/SOLID) **PODEM e DEVEM ser despachados simultaneamente** em uma única chamada de `invoke_subagent`. Como o validador é estritamente read-only e o verificador executa testes em bash, não há concorrência de arquivos nem disputa de git lock.
+   - Apenas arquivos compartilhados da raiz (`docker-compose.yml`, `package.json` raiz) operam em sequência.
 
 4. **Template Canônico de Prompt para Subagentes (Padrão Boost)**:
    Ao despachar subagentes, o prompt DEVE seguir rigorosamente a estrutura profunda:
