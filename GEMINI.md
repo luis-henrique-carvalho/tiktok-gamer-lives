@@ -13,6 +13,7 @@ Toda a arquitetura, regras de negócio e especificações detalhadas do projeto 
 - 📋 **[Documento de Requisitos de Produto (PRD)](docs/prd-mvp-live-interativa.md)**: Regras de negócio, catálogo de presentes, sistema de combos, cooldowns e critérios de aceite do MVP.
 - 🧭 **[Roadmap Estratégico do Produto](docs/roadmap.md)**: Visão de produto no framework Now/Next/Later, grafo de dependências técnicas e acompanhamento de iniciativas.
 - 🗺️ **[Plano de Implementação Ativo (Walking Skeleton)](docs/plans/mvp-walking-skeleton.md)**: Roadmap executável e passos de implementação TDD do MVP.
+- 🕸️ **[Grafo de Conhecimento do Codebase](graphify-out/GRAPH_REPORT.md)**: Grafo topológico e análise de comunidades (192 nós, 214 arestas) gerado em `graphify-out/graph.json` e visualizável interativamente em `graphify-out/graph.html`.
 
 ---
 
@@ -24,6 +25,9 @@ Toda a arquitetura, regras de negócio e especificações detalhadas do projeto 
 4. **TDD Rigoroso & Cobertura**: Ciclo Red → Green → Refactor obrigatório no motor de jogo e workers seriais. Mínimo inegociável de **90% no backend** e **85% no frontend**.
 5. **Modo Strict Total**: Proibido uso de `any` em todo o monorepo.
 6. **Estratégia Git & Worktrees**: Novas fases e funcionalidades são desenvolvidas em branches dedicadas (`feat/<nome>`). Subagentes usam modo `inherit` no fluxo sequencial e `branch` (Git Worktree isolado) para spikes. A branch `master` deve permanecer sempre verde e protegida por `./scripts/verify.sh`.
+7. **Graphify First & Manutenção de Grafo**: Toda pesquisa sobre arquitetura, relações entre módulos e fluxo de execução deve consultar o grafo de conhecimento em `graphify-out/` (`graphify query`, `graphify explain`, `graphify path`) antes de qualquer varredura genérica com grep/find. Após alterar arquivos de código, o grafo deve ser mantido atualizado (`graphify update .`).
+8. **Instalação Canônica via CLI**: Proibido editar `package.json` manualmente para adicionar ou remover pacotes. Toda dependência DEVE ser instalada via CLI pnpm com filtro explícito de workspace (`pnpm --filter <app> add [-D] <pacote>`), garantindo integridade do `pnpm-lock.yaml` e validação imediata de peer dependencies.
+9. **Orquestração Mandatória de Subagentes**: O agente primário do chat atua EXCLUSIVAMENTE como Orquestrador. Toda implementação técnica, criação de código e testes DEVE ser delegada aos subagentes especializados (`codebase-researcher`, `backend-builder`, `frontend-builder`, `test-verifier`, `implementation-validator`) via ferramenta `invoke_subagent`. Proibida a implementação monolítica direta no chat principal.
 
 ---
 
@@ -34,6 +38,9 @@ Toda a arquitetura, regras de negócio e especificações detalhadas do projeto 
 3. **NUNCA rodar agentes de escrita em paralelo**: construtores de backend e frontend rodam sequencialmente para evitar conflitos de código.
 4. **NUNCA misturar lógica de jogo no Host**: novas regras pertencem a `apps/api/src/modules/games/<game>/`, nunca a rotas Fastify ou executors genéricos.
 5. **NUNCA usar `any`**: TypeScript em modo strict em todos os arquivos.
+6. **NUNCA fazer varredura manual cega**: Proibido ler dezenas de arquivos com `list_dir` e `view_file` para mapear dependências quando `graphify query` fornece os caminhos de forma instantânea e cirúrgica.
+7. **NUNCA editar `package.json` manualmente para instalar dependências**: Sempre usar o comando de CLI `pnpm --filter <app> add ...`.
+8. **NUNCA implementar código diretamente no chat principal**: Toda escrita de código DEVE ser delegada ao subagente correspondente (`backend-builder` ou `frontend-builder`) via `invoke_subagent`.
 
 ---
 
@@ -42,6 +49,18 @@ Toda a arquitetura, regras de negócio e especificações detalhadas do projeto 
 ```bash
 # Validação completa de qualidade e cobertura
 ./scripts/verify.sh
+
+# Gerenciamento de Dependências via CLI (Obrigatório)
+pnpm --filter api add <pacote>               # Adicionar dependência em apps/api
+pnpm --filter api add -D <pacote>            # Adicionar dependência de dev em apps/api
+pnpm --filter web add <pacote>               # Adicionar dependência em apps/web
+pnpm --filter web add -D <pacote>            # Adicionar dependência de dev em apps/web
+
+# Grafo de Conhecimento do Codebase (Graphify)
+graphify query "<pergunta ou conceito>"      # Consulta semântica e topológica no grafo
+graphify explain "<símbolo ou módulo>"       # Explicar nós, conexões e blast radius
+graphify path "<Módulo A>" "<Módulo B>"     # Menor caminho de dependência entre dois nós
+graphify update .                            # Atualização incremental do grafo após editar código
 
 # Instalação
 pnpm install

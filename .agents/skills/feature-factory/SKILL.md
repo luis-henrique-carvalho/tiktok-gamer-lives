@@ -129,6 +129,7 @@ Execute os builders **estritamente em sequência**:
   - **`tdd`**: Escreva testes apenas nas costuras pré-acordadas. Siga o ciclo *Red → Green*: um teste que falha por vez, seguido da menor implementação que passa.
   - **`solid`**: Aplique inversão de dependência (DIP/Hexagonal Ports & SPIs), responsabilidade única (SRP) e segregação de interfaces (ISP). Valide entradas com Zod nas bordas e utilize tipagem estrita sem vazamento de infraestrutura para o domínio.
   - **`ponytail`**: Aplique o princípio da menor solução viável (YAGNI). Prefira recursos padrão da linguagem antes de bibliotecas externas; evite classes de suporte especulativas e abstrações prematuras.
+  - **Dependências via CLI**: Sempre instale novos pacotes via CLI (`pnpm --filter api add [-D] <pacote>`). Nunca edite o `package.json` manualmente.
 
 #### 3.2. `frontend-builder` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `shadcn`, `frontend-design`, `modern-web-guidance`.
@@ -136,6 +137,7 @@ Execute os builders **estritamente em sequência**:
   - **`shadcn`**: Reutilize primitivos acessíveis e componentes existentes.
   - **`frontend-design`**: Aplique estética visual e tipografia distintas e intencionais.
   - **`modern-web-guidance`**: Siga boas práticas de performance, CSS moderno e preserve o isolamento total dos tipos do backend (contratos de consumo locais).
+  - **Dependências via CLI**: Sempre instale novos pacotes ou componentes via CLI (`pnpm --filter web add [-D] <pacote>` ou `pnpm --filter web dlx shadcn@latest add <componente>`). Nunca edite o `package.json` manualmente.
 
 #### 3.3. `test-verifier` (Modelo: `flash` com High Effort / `inherit`)
 - **Skills Ativas**: `tdd`, `chrome-devtools`, `a11y-debugging`.

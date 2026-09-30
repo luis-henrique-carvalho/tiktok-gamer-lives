@@ -26,16 +26,50 @@ def main():
             return
 
         workspace_paths = payload.get("workspacePaths", [])
-        graphify_exists = any(
-            os.path.isdir(os.path.join(p, "graphify-out")) for p in workspace_paths
-        )
+        ws = workspace_paths[0] if workspace_paths else os.getcwd()
 
-        if not graphify_exists:
+        import shutil
+        import subprocess
+
+        graphify_bin = shutil.which("graphify")
+        if not graphify_bin:
             print(json.dumps({}))
             return
 
+        graphify_dir = os.path.join(ws, "graphify-out")
+        graph_json = os.path.join(graphify_dir, "graph.json")
+
+        # 1. Se o grafo não existir, gera do zero automaticamente
+        if not os.path.exists(graph_json):
+            try:
+                subprocess.run(
+                    [graphify_bin, "extract", ".", "--code-only"],
+                    cwd=ws,
+                    capture_output=True,
+                    timeout=20,
+                )
+                subprocess.run(
+                    [graphify_bin, "cluster-only", "."],
+                    cwd=ws,
+                    capture_output=True,
+                    timeout=20,
+                )
+            except Exception:
+                pass
+        else:
+            # 2. Se já existir, sincroniza incrementalmente (AST rápida, ~0.4s)
+            try:
+                subprocess.run(
+                    [graphify_bin, "update", "."],
+                    cwd=ws,
+                    capture_output=True,
+                    timeout=10,
+                )
+            except Exception:
+                pass
+
         message = (
-            "🔍 GRAPHIFY FIRST — Este projeto possui um grafo de conhecimento em `graphify-out/`. "
+            "🔍 GRAPHIFY FIRST — O grafo de conhecimento em `graphify-out/` foi sincronizado automaticamente. "
             "ANTES de usar grep, find, view_file ou list_dir para explorar o codebase, "
             "você DEVE executar:\n"
             "  • `graphify query \"<termo>\"` — para buscas conceituais/arquiteturais\n"
