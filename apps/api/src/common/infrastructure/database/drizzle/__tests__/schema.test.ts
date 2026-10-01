@@ -6,6 +6,8 @@ import {
   account,
   verification,
   gameSessions,
+  gameSnapshots,
+  gameInteractions,
 } from '../schema.js';
 
 describe('Drizzle Schemas', () => {
@@ -72,5 +74,36 @@ describe('Drizzle Schemas', () => {
     expect(columns).toHaveProperty('updatedAt');
 
     expect(columns.id.primary).toBe(true);
+  });
+
+  it('should define game_snapshots table with sequence, state, projection and foreign key', () => {
+    const columns = getTableColumns(gameSnapshots);
+    expect(columns).toHaveProperty('id');
+    expect(columns).toHaveProperty('sessionId');
+    expect(columns).toHaveProperty('gameId');
+    expect(columns).toHaveProperty('sequence');
+    expect(columns).toHaveProperty('state');
+    expect(columns).toHaveProperty('projection');
+    expect(columns).toHaveProperty('createdAt');
+
+    expect(columns.id.primary).toBe(true);
+  });
+
+  it('should define game_interactions table with unique idempotencyKey and status', () => {
+    const columns = getTableColumns(gameInteractions);
+    expect(columns).toHaveProperty('id');
+    expect(columns).toHaveProperty('sessionId');
+    expect(columns).toHaveProperty('idempotencyKey');
+    expect(columns).toHaveProperty('type');
+    expect(columns).toHaveProperty('source');
+    expect(columns).toHaveProperty('userId');
+    expect(columns).toHaveProperty('userName');
+    expect(columns).toHaveProperty('payload');
+    expect(columns).toHaveProperty('status');
+    expect(columns).toHaveProperty('createdAt');
+    expect(columns).toHaveProperty('processedAt');
+
+    expect(columns.id.primary).toBe(true);
+    expect(columns.idempotencyKey.isUnique).toBe(true);
   });
 });
