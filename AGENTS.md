@@ -5,6 +5,8 @@ Este arquivo é a fonte única de regras do repositório para agentes no Codex e
 ## Referências do projeto
 
 - [Arquitetura](docs/spec/architecture.md): fonte autoritativa para arquitetura hexagonal, contratos SPI da engine, concorrência, persistência e separação entre apps.
+- [Modelo de Domínio](docs/spec/domain-model.md): mapa de contextos delimitados (Bounded Contexts), diagrama de entidades (ER) e jornada de eventos.
+- [Linguagem Ubíqua](CONTEXT.md): glossário canônico de termos de domínio e termos a evitar.
 - [Stack e cobertura](docs/spec/stack.md): bibliotecas, versões e metas de cobertura.
 - [PRD](docs/prd-mvp-live-interativa.md): regras de negócio e critérios de aceite do MVP.
 - [Roadmap](docs/roadmap.md): prioridades e dependências entre iniciativas.
