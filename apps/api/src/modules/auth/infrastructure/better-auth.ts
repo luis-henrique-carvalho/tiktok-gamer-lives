@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { openAPI } from 'better-auth/plugins';
 import { db } from '../../../common/infrastructure/database/drizzle/client.js';
 import * as schema from '../../../common/infrastructure/database/drizzle/schema.js';
 import { loadEnv } from '../../../common/config/env.js';
@@ -21,6 +22,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  plugins: [openAPI()],
 });
 
 export type Auth = typeof auth;

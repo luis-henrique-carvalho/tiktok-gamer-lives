@@ -58,4 +58,10 @@ describe('Fastify Application (app.ts)', () => {
     expect(ui.statusCode).toBe(200);
     expect(ui.headers['content-type']).toContain('text/html');
   });
+
+  it('builds successfully with default options', async () => {
+    app = await buildApp();
+    const response = await app.inject({ method: 'GET', url: '/health' });
+    expect(response.statusCode).toBe(200);
+  });
 });

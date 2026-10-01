@@ -8,6 +8,8 @@ import swaggerUi from '@fastify/swagger-ui';
 import { errorHandler } from './common/infrastructure/http/error-handler.js';
 import { healthRoutes } from './common/infrastructure/http/routes/health.routes.js';
 import { authRoutes } from './modules/auth/infrastructure/http/routes/auth.routes.js';
+import { getLoggerConfig } from './common/config/logger.js';
+import { loadEnv } from './common/config/env.js';
 
 export interface AppOptions extends FastifyServerOptions {
   corsOrigin?: FastifyCorsOptions['origin'];
@@ -16,9 +18,17 @@ export interface AppOptions extends FastifyServerOptions {
 export async function buildApp(
   options: AppOptions = {},
 ): Promise<FastifyInstance> {
-  const { corsOrigin = '*', ...fastifyOptions } = options;
+  const env = loadEnv();
+  const {
+    corsOrigin = '*',
+    logger = getLoggerConfig(env),
+    ...fastifyOptions
+  } = options;
 
-  const app = Fastify(fastifyOptions);
+  const app = Fastify({
+    logger,
+    ...fastifyOptions,
+  });
 
   app.setErrorHandler(errorHandler);
   app.setNotFoundHandler((_request, reply) => {

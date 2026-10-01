@@ -1,10 +1,11 @@
 import { loadEnv } from './common/config/env.js';
+import { getLoggerConfig } from './common/config/logger.js';
 import { buildApp } from './app.js';
 
 export async function main(): Promise<void> {
   const env = loadEnv();
   const app = await buildApp({
-    logger: env.NODE_ENV !== 'test',
+    logger: getLoggerConfig(env),
     corsOrigin: env.CORS_ORIGIN,
   });
 

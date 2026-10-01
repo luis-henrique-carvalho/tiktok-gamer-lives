@@ -213,6 +213,32 @@ describe('Better Auth HTTP Integration', () => {
     expect(body.user.email).toBe(uniqueEmail);
   });
 
+  it('should serve OpenAPI interactive documentation at /api/auth/reference', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/auth/reference',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.body).toContain('Scalar');
+  });
+
+  it('should generate OpenAPI JSON schema at /api/auth/open-api/generate-schema', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/auth/open-api/generate-schema',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const schema = JSON.parse(response.body);
+    expect(schema).toHaveProperty('openapi');
+    expect(schema).toHaveProperty('paths');
+    expect(schema.paths).toHaveProperty('/sign-up/email');
+    expect(schema.paths).toHaveProperty('/sign-in/email');
+    expect(schema.paths).toHaveProperty('/get-session');
+  });
+
   it('should handle non-existent auth routes correctly', async () => {
     const response = await app.inject({
       method: 'GET',

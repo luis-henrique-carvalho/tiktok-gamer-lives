@@ -53,6 +53,15 @@ describe('Environment Configuration (env.ts)', () => {
     expect(() => loadEnv({ NODE_ENV: 'invalid-env' })).toThrow();
   });
 
+  it('should support LOG_LEVEL environment variable', () => {
+    const env = loadEnv({ LOG_LEVEL: 'warn' });
+    expect(env.LOG_LEVEL).toBe('warn');
+  });
+
+  it('should throw error when LOG_LEVEL is invalid', () => {
+    expect(() => loadEnv({ LOG_LEVEL: 'invalid-level' })).toThrow();
+  });
+
   it('should read process.env by default when no argument is passed', () => {
     const originalNodeEnv = process.env.NODE_ENV;
     try {
