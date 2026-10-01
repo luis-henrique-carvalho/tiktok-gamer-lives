@@ -24,10 +24,17 @@ export class ApiError extends Error {
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const headers = {
-    'Content-Type': 'application/json',
+  const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string> | undefined),
   };
+
+  if (
+    options?.body !== undefined &&
+    options?.body !== null &&
+    !headers['Content-Type']
+  ) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const response = await fetch(url, {
     ...options,

@@ -82,7 +82,7 @@ describe('API Client', () => {
     const result = await getSession('sess-1');
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/sessions/sess-1', {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     });
     expect(result).toEqual(mockSession);
   });
@@ -98,7 +98,7 @@ describe('API Client', () => {
       '/api/sessions/sess-1/start',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {},
       },
     );
 
@@ -107,7 +107,7 @@ describe('API Client', () => {
       '/api/sessions/sess-1/pause',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {},
       },
     );
 
@@ -116,14 +116,14 @@ describe('API Client', () => {
       '/api/sessions/sess-1/resume',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {},
       },
     );
 
     await endSession('sess-1');
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/sessions/sess-1/end', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     });
 
     await getAuditSession('sess-1');
@@ -131,7 +131,7 @@ describe('API Client', () => {
       '/api/sessions/sess-1/audit',
       {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {},
       },
     );
   });
@@ -152,13 +152,13 @@ describe('API Client', () => {
     await disconnectTikTok();
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/tiktok/disconnect', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     });
 
     await getTikTokStatus();
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/tiktok/status', {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     });
   });
 
@@ -178,7 +178,7 @@ describe('API Client', () => {
     await stopSimulator();
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/simulator/stop', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {},
     });
 
     await burstSimulator({
