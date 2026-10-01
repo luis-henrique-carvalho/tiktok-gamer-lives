@@ -9,6 +9,23 @@ const env = loadEnv();
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
+  trustedOrigins: [
+    'http://localhost:5176',
+    'http://localhost:5180',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3010',
+    'http://127.0.0.1:5176',
+    'http://127.0.0.1:5180',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3010',
+    ...(env.CORS_ORIGIN && env.CORS_ORIGIN !== '*'
+      ? env.CORS_ORIGIN.split(',').map((o) => o.trim())
+      : []),
+  ],
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
