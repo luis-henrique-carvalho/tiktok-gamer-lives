@@ -43,15 +43,15 @@ Organiza o ciclo de vida de qualquer demanda em camadas estritas de **pesquisa**
 
 ## 2. A Cadeia de 7 Agentes & Matriz de Skills
 
-| Papel | Tipo / Agente | Modelo | Permissão | Skills Integradas | Responsabilidade |
+| Papel | Tipo / Agente (`TypeName`) | Modelo | Permissão | Skills Integradas | Responsabilidade |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. `codebase-researcher`** | `research` | `flash` | Leitura | **`graphify`**, **`research`** | Mapeia o grafo de dependências, pontos de impacto e interfaces afetadas sem alterar código. |
+| **1. `codebase-researcher`** | `codebase-researcher` | `flash` | Leitura | **`graphify`**, **`research`** | Mapeia o grafo de dependências, pontos de impacto e interfaces afetadas sem alterar código. |
 | **2. `story-writer`** | Orquestrador | `flash` (High Effort) | Leitura | **`domain-modeling`**, **`/grill-me`** | Converte a solicitação em User Stories claras. Aciona entrevista interativa para alinhar dúvidas de regras e requisitos. |
 | **3. `spec-writer`** | Orquestrador | `flash` (High Effort) | Docs | **`/plan`**, **`codebase-design`**, **`/grill-me`** | Resolve trade-offs técnicos via `/grill-me`, desenha módulos profundos (*deep modules*), costuras (*seams*) de teste e salva em `docs/plans/<slug>.md`. |
-| **4. `backend-builder`** | `self` | `flash` (High Effort) | Escrita | **`tdd`**, **`solid`**, **`ponytail`**, **`codebase-design`** | Constrói regras de negócio, dados e APIs com ciclo estrito Red → Green, aplicando SOLID e Clean Architecture balanceados com YAGNI radical. |
-| **5. `frontend-builder`** | `self` | `flash` (High Effort) | Escrita | **`shadcn`**, **`frontend-design`**, **`modern-web-guidance`** | Constrói telas e componentes com hierarquia visual intencional, Tailwind e padrões modernos de frontend sem acoplar backend. |
-| **6. `test-verifier`** | `self` | `flash` (High Effort) | Escrita / Cmd | **`tdd`**, **`chrome-devtools`**, **`a11y-debugging`** | Executa suítes de teste, adiciona testes de aceitação e verifica acessibilidade/performance onde aplicável. |
-| **7. `implementation-validator`** | `code-review` | `flash` (High Effort) | Leitura | **`code-review`**, **`solid`**, **`ponytail-review`**, **`efficient-swe-workflow`** | Audita o diff final em dois eixos (Spec vs. Padrões do `AGENTS.md` e SOLID), caçando code smells e complexidade desnecessária. |
+| **4. `backend-builder`** | `backend-builder` | `flash` (High Effort) | Escrita | **`tdd`**, **`solid`**, **`ponytail`**, **`codebase-design`** | Constrói regras de negócio, dados e APIs com ciclo estrito Red → Green, aplicando SOLID e Clean Architecture balanceados com YAGNI radical. |
+| **5. `frontend-builder`** | `frontend-builder` | `flash` (High Effort) | Escrita | **`shadcn`**, **`frontend-design`**, **`modern-web-guidance`** | Constrói telas e componentes com hierarquia visual intencional, Tailwind e padrões modernos de frontend sem acoplar backend. |
+| **6. `test-verifier`** | `test-verifier` | `flash` (High Effort) | Escrita / Cmd | **`tdd`**, **`chrome-devtools`**, **`a11y-debugging`** | Executa suítes de teste, adiciona testes de aceitação e verifica acessibilidade/performance onde aplicável. |
+| **7. `implementation-validator`** | `implementation-validator` | `flash` (High Effort) | Leitura | **`code-review`**, **`solid`**, **`ponytail-review`**, **`efficient-swe-workflow`** | Audita o diff final em dois eixos (Spec vs. Padrões do `AGENTS.md` e SOLID), caçando code smells e complexidade desnecessária. |
 
 ---
 
@@ -142,10 +142,19 @@ Antes de qualquer interação:
 ### Fase 3: Despacho do Subagente Orquestrador (`feature-orchestrator`)
 Aprovado o plano, o Chat Canvas invoca o subagente:
 - **Role**: `"Feature Factory Orchestrator"`
-- **TypeName**: `"feature-orchestrator"` (ou `"self"`)
+- **TypeName**: `"feature-orchestrator"`
 - **Prompt**: Contém o plano aprovado verbatim, links para os documentos autoritativos e a ordem de comandar a esteira.
 
 O `feature-orchestrator` executa o **Passo 0 de Skills** (`view_file` em `feature-factory/SKILL.md`, `codebase-design/SKILL.md`, `solid/SKILL.md`) e despacha os dois blocos em paralelo:
+
+> [!IMPORTANT]
+> **Identificadores Canônicos de Subagentes (`TypeName`)**:
+> Ao invocar subagentes via `invoke_subagent`, utilize estritamente o `TypeName` correspondente ao identificador registrado em `.agents/agents/<name>.md`:
+> - `backend-builder` para o construtor backend
+> - `frontend-builder` para o construtor frontend
+> - `test-verifier` para o verificador de testes
+> - `implementation-validator` para o auditor de código
+> **NUNCA use `TypeName: "self"`** ao despachar subagentes a partir do orquestrador. Conforme a documentação oficial do Antigravity, `"self"` é uma palavra-chave reservada do agente raiz para auto-clonagem; seu uso dentro de um subagente resulta em erro fatal (`subagent "self" not found or not allowed to be invoked`).
 
 #### 📝 Template Canônico de Despacho (Padrão Boost)
 Todo subagente DEVE receber um prompt estruturado contendo:
@@ -169,6 +178,8 @@ Antes de executar qualquer comando ou criar/modificar arquivos, você DEVE carre
 ```
 
 #### 3.1. `backend-builder` (Modelo: `flash` com High Effort / `inherit`)
+- **TypeName**: `"backend-builder"`
+- **Role**: `"Backend Builder"`
 - **Passo 0 Obrigatório**: Executar `view_file` em:
   - `file:///home/luis/.gemini/config/skills/tdd/SKILL.md`
   - `file:///home/luis/repositories/tiktok-gamer-lives/.agents/skills/solid/SKILL.md`
@@ -180,6 +191,8 @@ Antes de executar qualquer comando ou criar/modificar arquivos, você DEVE carre
   - **Dependências via CLI**: Sempre instale novos pacotes via CLI (`pnpm --filter api add [-D] <pacote>`). Nunca edite o `package.json` manualmente.
 
 #### 3.2. `frontend-builder` (Modelo: `flash` com High Effort / `inherit`)
+- **TypeName**: `"frontend-builder"`
+- **Role**: `"Frontend Builder"`
 - **Passo 0 Obrigatório**: Executar `view_file` em:
   - `file:///home/luis/.gemini/config/skills/shadcn/SKILL.md`
   - `file:///home/luis/.gemini/config/skills/frontend-design/SKILL.md`
@@ -196,6 +209,8 @@ Antes de executar qualquer comando ou criar/modificar arquivos, você DEVE carre
 Concluída a construção, ambos os subagentes são disparados **simultaneamente no mesmo `invoke_subagent`**:
 
 #### 4.1. `test-verifier` (Modelo: `flash` com High Effort / `inherit`)
+- **TypeName**: `"test-verifier"`
+- **Role**: `"Quality & Test Verifier"`
 - **Passo 0 Obrigatório**: Executar `view_file` em:
   - `file:///home/luis/.gemini/config/skills/tdd/SKILL.md`
   - `file:///home/luis/.gemini/config/plugins/chrome-devtools-plugin/skills/a11y-debugging/SKILL.md`
@@ -205,6 +220,8 @@ Concluída a construção, ambos os subagentes são disparados **simultaneamente
   - Onde aplicável, valide acessibilidade (a11y) e renderização no navegador.
 
 #### 4.2. `implementation-validator` (Modelo: `flash` com High Effort / `inherit`)
+- **TypeName**: `"implementation-validator"`
+- **Role**: `"Implementation Validator"`
 - **Passo 0 Obrigatório**: Executar `view_file` em:
   - `file:///home/luis/.gemini/config/skills/code-review/SKILL.md`
   - `file:///home/luis/repositories/tiktok-gamer-lives/.agents/skills/solid/SKILL.md`

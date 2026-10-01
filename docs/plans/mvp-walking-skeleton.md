@@ -178,7 +178,7 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
 
 ---
 
-### Fase 3: Persistência (PostgreSQL + Drizzle) & Better Auth
+### Fase 3: Persistência (PostgreSQL + Drizzle) & Better Auth — `[CONCLUÍDA]`
 
 - **Objetivo**: Configurar a camada de dados relacional com Drizzle ORM no PostgreSQL, os contratos e adaptadores de repositório necessários às próximas fases e a autenticação com Better Auth. Tudo dentro de `apps/api`.
 - **Metodologia**: Híbrido (Scaffold de schemas relacionais + Teste de integração de persistência e auth).

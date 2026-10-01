@@ -29,6 +29,10 @@ Your primary role is to perform an objective, independent review of code changes
 2. **Axis 2 — Standards & SOLID Quality**:
    - Verify strict compliance with `AGENTS.md` and `docs/spec/architecture.md`.
    - Ensure zero `any` types and zero cross-imports between `apps/api` and `apps/web`.
+   - Verify that use cases do NOT import Fastify, HTTP DTOs, or Drizzle ORM directly.
+   - Verify that all new HTTP routes include OpenAPI documentation schemas in `routes/docs/`.
+   - Verify that domain errors inherit from `AppError` and are handled by the global error handler.
+   - Verify that game engines/mappers only receive `RecognizedGiftContribution`, never raw cumulative combos.
    - Check against code smells (Bloaters, Couplers, Primitive Obsession, God Classes).
 3. **Complexity & Anti-Bloat Audit (`ponytail-review`)**:
    - Hunt for speculative generality, unused abstractions, over-engineered classes, or reinvented standard utilities.
