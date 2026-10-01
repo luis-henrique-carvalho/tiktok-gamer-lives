@@ -1,0 +1,160 @@
+import type {
+  CreateSessionRequest,
+  GameSession,
+  ResumeSessionResponse,
+  AuditSessionResponse,
+  TikTokConnectRequest,
+  TikTokStatusResponse,
+  SimulatorStartRequest,
+  SimulatorStartResponse,
+  SimulatorStopResponse,
+  SimulatorBurstRequest,
+  SimulatorBurstResponse,
+} from './types';
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly data?: unknown,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> | undefined),
+  };
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    let errorData: unknown;
+    let errorMessage = response.statusText || 'Request failed';
+    try {
+      errorData = await response.json();
+      if (
+        typeof errorData === 'object' &&
+        errorData !== null &&
+        'message' in errorData &&
+        typeof (errorData as { message: unknown }).message === 'string'
+      ) {
+        errorMessage = (errorData as { message: string }).message;
+      }
+    } catch {
+      // Not a JSON response
+    }
+    throw new ApiError(errorMessage, response.status, errorData);
+  }
+
+  return (await response.json()) as T;
+}
+
+// Sessions
+export async function createSession(
+  data: CreateSessionRequest,
+): Promise<GameSession> {
+  return request<GameSession>('/api/sessions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getSession(id: string): Promise<GameSession> {
+  return request<GameSession>(`/api/sessions/${encodeURIComponent(id)}`, {
+    method: 'GET',
+  });
+}
+
+export async function startSession(id: string): Promise<GameSession> {
+  return request<GameSession>(`/api/sessions/${encodeURIComponent(id)}/start`, {
+    method: 'POST',
+  });
+}
+
+export async function pauseSession(id: string): Promise<GameSession> {
+  return request<GameSession>(`/api/sessions/${encodeURIComponent(id)}/pause`, {
+    method: 'POST',
+  });
+}
+
+export async function resumeSession(
+  id: string,
+): Promise<ResumeSessionResponse> {
+  return request<ResumeSessionResponse>(
+    `/api/sessions/${encodeURIComponent(id)}/resume`,
+    {
+      method: 'POST',
+    },
+  );
+}
+
+export async function endSession(id: string): Promise<GameSession> {
+  return request<GameSession>(`/api/sessions/${encodeURIComponent(id)}/end`, {
+    method: 'POST',
+  });
+}
+
+export async function getAuditSession(
+  id: string,
+): Promise<AuditSessionResponse> {
+  return request<AuditSessionResponse>(
+    `/api/sessions/${encodeURIComponent(id)}/audit`,
+    {
+      method: 'GET',
+    },
+  );
+}
+
+// TikTok Ingress
+export async function connectTikTok(
+  data: TikTokConnectRequest,
+): Promise<TikTokStatusResponse> {
+  return request<TikTokStatusResponse>('/api/tiktok/connect', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function disconnectTikTok(): Promise<{ status: string }> {
+  return request<{ status: string }>('/api/tiktok/disconnect', {
+    method: 'POST',
+  });
+}
+
+export async function getTikTokStatus(): Promise<TikTokStatusResponse> {
+  return request<TikTokStatusResponse>('/api/tiktok/status', {
+    method: 'GET',
+  });
+}
+
+// Simulator Ingress
+export async function startSimulator(
+  data: SimulatorStartRequest,
+): Promise<SimulatorStartResponse> {
+  return request<SimulatorStartResponse>('/api/simulator/start', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function stopSimulator(): Promise<SimulatorStopResponse> {
+  return request<SimulatorStopResponse>('/api/simulator/stop', {
+    method: 'POST',
+  });
+}
+
+export async function burstSimulator(
+  data: SimulatorBurstRequest,
+): Promise<SimulatorBurstResponse> {
+  return request<SimulatorBurstResponse>('/api/simulator/burst', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
