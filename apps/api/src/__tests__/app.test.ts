@@ -42,17 +42,23 @@ describe('Fastify Application (app.ts)', () => {
     );
   });
 
-  it('serves OpenAPI documentation for the health route', async () => {
+  it('serves OpenAPI documentation for health and merged Better Auth routes', async () => {
     app = await buildApp({ logger: false });
 
     const response = await app.inject({ method: 'GET', url: '/api/docs/json' });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
+    const json = response.json();
+    expect(json).toMatchObject({
       openapi: expect.any(String),
       paths: {
         '/health': { get: { tags: ['Health'] } },
+        '/api/auth/sign-up/email': expect.any(Object),
+        '/api/auth/sign-in/email': expect.any(Object),
+        '/api/auth/get-session': expect.any(Object),
       },
     });
+    // Ensure wildcard catch-all is not present in Swagger
+    expect(json.paths).not.toHaveProperty('/api/auth/*');
 
     const ui = await app.inject({ method: 'GET', url: '/api/docs/' });
     expect(ui.statusCode).toBe(200);
