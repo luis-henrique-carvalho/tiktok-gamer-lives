@@ -12,7 +12,7 @@ Neste repositório, o agente primário da conversa atua como **User Bridge** e a
 1. **Topologia Hierárquica em 2 Níveis**:
    - **Nível 1 — Chat Canvas (Root / User Bridge)**:
      - Realiza o **Gate 0 Mandatório (/grill-me)**: formula de 2 a 3 perguntas interativas via `ask_question` para sanar dúvidas de regras, casos de borda e decisões técnicas.
-     - Redige o plano técnico (`docs/plans/<slug>.md` e `implementation_plan.md`) via Grafo de Conhecimento (`graphify query`) em até 2 minutos (Zero Pre-work).
+     - Redige o plano técnico (`docs/plans/<slug>.md` e `implementation_plan.md`) via Grafo de Conhecimento (`graphify query`) em até 2 minutos (Zero Pre-work), **incluindo obrigatoriamente diagramas Mermaid estruturais** (Topologia `flowchart TD`, Ciclo de Vida `stateDiagram-v2` e/ou Sequência `sequenceDiagram`).
      - Aguarda aprovação explícita do usuário no Gate Humano 1 & 2.
      - Invoca o subagente `feature-orchestrator` (`Role: "Feature Factory Orchestrator"`) com o plano aprovado.
      - Apresenta o resultado final no Gate 3 e dispara o fechamento `/learn`.

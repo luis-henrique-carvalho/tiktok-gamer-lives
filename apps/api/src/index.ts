@@ -1,5 +1,7 @@
 import { loadEnv } from './common/config/env.js';
 import { buildApp } from './app.js';
+import { closeRedisConnection } from './common/infrastructure/queue/redis.connection.js';
+import { sqlClient } from './common/infrastructure/database/drizzle/client.js';
 
 export async function main(): Promise<void> {
   const env = loadEnv();
@@ -12,6 +14,8 @@ export async function main(): Promise<void> {
     app.log.info(`Received ${signal}. Gracefully shutting down...`);
     try {
       await app.close();
+      await closeRedisConnection();
+      await sqlClient.end();
       process.exit(0);
     } catch (err) {
       app.log.error(err, 'Error during graceful shutdown');
