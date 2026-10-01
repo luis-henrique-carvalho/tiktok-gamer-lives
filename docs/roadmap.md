@@ -23,12 +23,13 @@
 flowchart LR
     subgraph NOW["🟢 NOW: MVP Walking Skeleton"]
         direction TB
-        N1["1. Fundação & Docker: Postgres, Redis, Fastify, Web"]
-        N2["2. Motor A x B Determinístico: TDD Puro"]
-        N3["3. Ingress & Fila Serial FIFO: BullMQ concorrência 1"]
-        N4["4. Overlay OBS 1080×1920 & Áudio Procedural"]
-        N5["5. Painel do Streamer & Simulador de Live"]
-        N1 --> N2 --> N3 --> N4 --> N5
+        N1["1. Fundação & Docker: Postgres, Redis, Fastify, Web ✅"]
+        N2["2. Motor A x B Determinístico: TDD Puro ✅"]
+        N3["3. Persistência & Better Auth: Drizzle ORM ✅"]
+        N4["4. Ingress & Fila Serial FIFO: BullMQ conc=1 🎯"]
+        N5["5. Adaptadores, Socket.IO & Rotas Fastify"]
+        N6["6. Frontend: Dashboard, Overlay OBS & Áudio"]
+        N1 --> N2 --> N3 --> N4 --> N5 --> N6
     end
 
     subgraph NEXT["🟡 NEXT: Operação Real & Refinamento"]
@@ -60,12 +61,14 @@ flowchart LR
 
 | Iniciativa | Hipótese / Objetivo de Negócio | Métrica de Sucesso | Status |
 | :--- | :--- | :--- | :--- |
-| **1. Fundação & Docker** | Garantir ambiente reproduzível e isolado com live-reload. | 4 serviços saudáveis no compose; `GET /health` 200. | ⏳ Em Andamento |
-| **2. Motor A x B com TDD** | Lógica determinística e pura (`RG-01` a `RG-12`) sem acoplamento a banco ou rede. | 100% dos testes unitários passando em <10ms; zero bugs de combo. | 📋 Na Fila |
-| **3. Ingress & Fila Serial** | Ingestão resiliente e execução FIFO concorrência 1. | 100 eventos processados sem perda ou race condition. | 📋 Na Fila |
-| **4. Gateway Socket.IO & Overlay** | Feedback visual instantâneo para a audiência da live. | Taxa de atualização a 60 FPS no OBS; latência <100ms. | 📋 Na Fila |
-| **5. Motor de Áudio Procedural** | Imersão sonora dinâmica sem dependência de assets pesados. | Sons de ponto, combo e vitória disparados via Web Audio API. | 📋 Na Fila |
-| **6. Painel & Simulador** | Permitir que o operador controle a live e teste cenários sem depender de live ativa. | Login seguro e injeção de rajadas com 1 clique no simulador. | 📋 Na Fila |
+| **1. Fundação & Docker** | Garantir ambiente reproduzível e isolado com live-reload. | 4 serviços saudáveis no compose; `GET /health` 200; 100% de cobertura. | ✅ Concluída |
+| **2. Motor A x B com TDD** | Lógica determinística e pura (`RG-01` a `RG-12`), contratos SPI e Game Registry. | 100% dos testes unitários passando em <15ms (72 testes na API); zero bugs de combo. | ✅ Concluída |
+| **3. Persistência & Better Auth** | Camada de dados relacional com Drizzle ORM (PostgreSQL 17), contratos de repositório e autenticação. | Migrações Drizzle aplicadas com sucesso; sessão Better Auth validada no Postgres; 96.23% cobertura. | ✅ Concluída |
+| **4. Ingress & Fila Serial** | Ingestão resiliente, deduplicação por chave de idempotência e execução FIFO concorrência 1 via BullMQ. | 100 eventos processados sem perda ou race condition; snapshots gerados monotonicamente. | 🎯 Próxima (Em Andamento) |
+| **5. Adaptadores, Socket.IO & Rotas** | Watchdog de heartbeat TikTok, tráfego sintético do simulador e broadcast com coalescência. | Latência <100ms; rajada sintética CA-11 sustentada a 200 ev/s por 60s. | 📋 Na Fila |
+| **6. Frontend: Dashboard & Simulador** | Permitir que o operador configure regras, opere a live e injete tráfego sintético. | Login seguro, controles de sessão e injeção de rajadas com 1 clique no painel. | 📋 Na Fila |
+| **7. Frontend: Overlay OBS & Áudio** | Projeção visual 1080×1920 a 60 FPS com batching `requestAnimationFrame` e síntese de áudio procedural com limitador de polifonia. | Torres proporcionais no OBS sem travamentos; zero clipping com áudio procedural. | 📋 Na Fila |
+| **8. Homologação E2E Integrada** | Validação ponta a ponta no Docker Compose atendendo a todos os critérios de aceite. | CA-01 a CA-15 satisfeitos com relatório de auditoria completo. | 📋 Na Fila |
 
 ---
 
@@ -96,14 +99,12 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    DOCKER[1. Docker Compose & Monorepo] --> ENGINE[2. Motor A x B Determinístico TDD]
-    ENGINE --> INGRESS[3. Ingress Worker & Fila Serial FIFO]
-    INGRESS --> SOCKET[4. Socket.IO Gateway & Projeções]
-    SOCKET --> OVERLAY[5. Overlay OBS 1080×1920 & Web Audio]
-    SOCKET --> DASHBOARD[6. Dashboard do Operador & Simulador]
-    
-    OVERLAY --> MVP_DONE([Walking Skeleton Completo e Homologado])
-    DASHBOARD --> MVP_DONE
+    DOCKER["1. Docker Compose & Monorepo ✅"] --> ENGINE["2. Motor A x B Determinístico TDD ✅"]
+    ENGINE --> PERSIST["3. Persistência Drizzle & Better Auth ✅"]
+    PERSIST --> INGRESS["4. Ingress Worker & Fila Serial FIFO 🎯"]
+    INGRESS --> FASTIFY["5. Adaptadores, Socket.IO & Rotas Fastify"]
+    FASTIFY --> FRONTEND["6. Frontend: Dashboard, Overlay OBS & Áudio"]
+    FRONTEND --> MVP_DONE([Walking Skeleton Completo e Homologado])
     
     MVP_DONE --> TIKTOK_LIVE[7. Conector TikTok LIVE Real]
     MVP_DONE --> THEMES[8. Sistema de Temas do Overlay]

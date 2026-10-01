@@ -17,6 +17,10 @@ export const envSchema = z.object({
     ),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   CORS_ORIGIN: z.string().default('*'),
+  BETTER_AUTH_SECRET: z
+    .string()
+    .default('supersecret-dev-key-change-in-prod-min-32-chars'),
+  BETTER_AUTH_URL: z.string().default('http://localhost:3001'),
 });
 
 export type Env = z.infer<typeof envSchema>;

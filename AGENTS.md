@@ -25,6 +25,7 @@ Este arquivo é a fonte única de regras do repositório para agentes no Codex e
 10. Mantenha configurações globais da API em `apps/api/src/common/config/` e os erros de aplicação em `apps/api/src/common/domain/errors/`, com tratamento HTTP global.
 11. Organize o HTTP de cada módulo em `infrastructure/http/`, separando `controllers/`, `dtos/` e `routes/`; documente as rotas em `routes/docs/` com schemas OpenAPI registrados no Fastify.
 12. Em módulos com lógica de aplicação e persistência, coloque casos de uso em `application/usecases/`, interfaces de repositório em `application/repositories/` e implementações Drizzle em `infrastructure/database/drizzle/`. Casos de uso não importam Fastify, DTO HTTP ou Drizzle; não crie essas camadas vazias para jogos puros nem duplique os fluxos padrão do Better Auth.
+13. No módulo de autenticação (`apps/api/src/modules/auth`), utilize o Better Auth com adaptador Drizzle e exponha endpoints via rota catch-all `/api/auth/*` convertendo objetos Fastify para Web Standard `Request`/`Response`. Mantenha migrações Drizzle versionadas em `apps/api/drizzle/` e executáveis programaticamente via runner nativo.
 
 ## Fluxo de trabalho para qualquer agente
 

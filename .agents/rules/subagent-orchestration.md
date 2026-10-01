@@ -29,6 +29,13 @@ Neste repositório, o agente primário da conversa atua como **User Bridge** e a
    - **Bloco 1 — Construção Concorrente**: Devido ao desacoplamento estrito (*Zero Shared Package*), `backend-builder` (`apps/api/`) e `frontend-builder` (`apps/web/`) **PODEM e DEVEM ser despachados em paralelo** dentro de uma única chamada de `invoke_subagent`.
    - **Bloco 2 — Validação & Auditoria Concorrentes**: Concluída a construção, `test-verifier` (execução da suíte `./scripts/verify.sh` e testes de aceitação) e `implementation-validator` (leitura e auditoria do diff contra Spec/SOLID) **PODEM e DEVEM ser despachados simultaneamente** em uma única chamada de `invoke_subagent`. Como o validador é estritamente read-only e o verificador executa testes em bash, não há concorrência de arquivos nem disputa de git lock.
    - Apenas arquivos compartilhados da raiz (`docker-compose.yml`, `package.json` raiz) operam em sequência.
+   - **Identificadores Canônicos (`TypeName`)**:
+     Ao invocar workers via `invoke_subagent`, utilize SEMPRE os identificadores únicos definidos em `.agents/agents/<name>.md`:
+     - `backend-builder` para o backend (`apps/api/`).
+     - `frontend-builder` para o frontend (`apps/web/`).
+     - `test-verifier` para a suíte de testes.
+     - `implementation-validator` para a auditoria de código.
+     **NUNCA use `TypeName: "self"`** em despachos a partir do orquestrador (`self` é restrito ao agente raiz e sua invocação a partir de um subagente é bloqueada pelo runtime com erro fatal).
 
 4. **Template Canônico de Prompt para Subagentes (Padrão Boost)**:
    Ao despachar subagentes, o prompt DEVE seguir rigorosamente a estrutura profunda:

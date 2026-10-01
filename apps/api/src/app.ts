@@ -7,6 +7,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { errorHandler } from './common/infrastructure/http/error-handler.js';
 import { healthRoutes } from './common/infrastructure/http/routes/health.routes.js';
+import { authRoutes } from './modules/auth/infrastructure/http/routes/auth.routes.js';
 
 export interface AppOptions extends FastifyServerOptions {
   corsOrigin?: FastifyCorsOptions['origin'];
@@ -38,6 +39,7 @@ export async function buildApp(
   });
   await app.register(swaggerUi, { routePrefix: '/api/docs' });
   await app.register(healthRoutes);
+  await app.register(authRoutes);
 
   return app;
 }
