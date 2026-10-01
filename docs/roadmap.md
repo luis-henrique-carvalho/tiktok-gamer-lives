@@ -25,8 +25,8 @@ flowchart LR
         direction TB
         N1["1. Fundação & Docker: Postgres, Redis, Fastify, Web ✅"]
         N2["2. Motor A x B Determinístico: TDD Puro ✅"]
-        N3["3. Persistência & Better Auth: Drizzle ORM 🎯"]
-        N4["4. Ingress & Fila Serial FIFO: BullMQ conc=1"]
+        N3["3. Persistência & Better Auth: Drizzle ORM ✅"]
+        N4["4. Ingress & Fila Serial FIFO: BullMQ conc=1 🎯"]
         N5["5. Adaptadores, Socket.IO & Rotas Fastify"]
         N6["6. Frontend: Dashboard, Overlay OBS & Áudio"]
         N1 --> N2 --> N3 --> N4 --> N5 --> N6
