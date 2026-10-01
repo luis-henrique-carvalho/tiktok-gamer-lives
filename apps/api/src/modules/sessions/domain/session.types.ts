@@ -7,6 +7,16 @@ export const SessionStatus = {
 
 export type SessionStatus = (typeof SessionStatus)[keyof typeof SessionStatus];
 
+export const InteractionStatus = {
+  PENDING: 'PENDING',
+  PROCESSED: 'PROCESSED',
+  IGNORED: 'IGNORED',
+  DUPLICATE: 'DUPLICATE',
+} as const;
+
+export type InteractionStatus =
+  (typeof InteractionStatus)[keyof typeof InteractionStatus];
+
 export interface GameSession {
   id: string;
   gameId: string;
@@ -27,4 +37,52 @@ export interface CreateSessionInput {
   title: string;
   config?: Record<string, unknown>;
   status?: SessionStatus;
+}
+
+export interface GameSnapshot {
+  id: string;
+  sessionId: string;
+  gameId: string;
+  sequence: number;
+  state: unknown;
+  projection: unknown;
+  createdAt: Date;
+}
+
+export interface CreateSnapshotInput {
+  id?: string;
+  sessionId: string;
+  gameId: string;
+  sequence: number;
+  state: unknown;
+  projection: unknown;
+  createdAt?: Date;
+}
+
+export interface StoredGameInteraction {
+  id: string;
+  sessionId: string;
+  idempotencyKey: string;
+  type: string;
+  source: string;
+  userId: string;
+  userName: string;
+  payload: Record<string, unknown>;
+  status: InteractionStatus;
+  createdAt: Date;
+  processedAt: Date | null;
+}
+
+export interface CreateInteractionInput {
+  id?: string;
+  sessionId: string;
+  idempotencyKey: string;
+  type: string;
+  source: string;
+  userId: string;
+  userName: string;
+  payload: Record<string, unknown>;
+  status?: InteractionStatus;
+  createdAt?: Date;
+  processedAt?: Date | null;
 }

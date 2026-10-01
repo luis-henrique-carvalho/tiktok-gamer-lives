@@ -8,6 +8,13 @@
       "when": 1790814312599,
       "tag": "0000_normal_maelstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790824245206,
+      "tag": "0001_natural_king_bedlam",
+      "breakpoints": true
     }
   ]
 }

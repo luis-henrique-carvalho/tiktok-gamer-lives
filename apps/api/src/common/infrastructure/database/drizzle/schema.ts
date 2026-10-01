@@ -1,4 +1,11 @@
-import { pgTable, text, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  jsonb,
+  integer,
+} from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -61,4 +68,32 @@ export const gameSessions = pgTable('game_sessions', {
   endedAt: timestamp('ended_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const gameSnapshots = pgTable('game_snapshots', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id')
+    .notNull()
+    .references(() => gameSessions.id, { onDelete: 'cascade' }),
+  gameId: text('game_id').notNull(),
+  sequence: integer('sequence').notNull(),
+  state: jsonb('state').notNull(),
+  projection: jsonb('projection').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const gameInteractions = pgTable('game_interactions', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id')
+    .notNull()
+    .references(() => gameSessions.id, { onDelete: 'cascade' }),
+  idempotencyKey: text('idempotency_key').notNull().unique(),
+  type: text('type').notNull(),
+  source: text('source').notNull(),
+  userId: text('user_id').notNull(),
+  userName: text('user_name').notNull(),
+  payload: jsonb('payload').notNull(),
+  status: text('status').notNull().default('PENDING'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  processedAt: timestamp('processed_at'),
 });
