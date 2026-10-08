@@ -15,6 +15,7 @@ import { Typography } from '@/components/ui/typography';
 import { useDashboardStore } from '../stores/use-dashboard-store';
 import { createSession } from '@/api/client';
 import { realtimeClient } from '@/lib/socket-client';
+import { TeamConfigFields } from './team-config-fields';
 import type { AxBConfig, AxBGiftRule } from '@/api/types';
 
 const DEFAULT_GIFT_RULES: readonly AxBGiftRule[] = [
@@ -32,21 +33,35 @@ export function AxBConfigForm() {
   const [title, setTitle] = useState('Batalha A x B');
   const [teamAName, setTeamAName] = useState('Time Vermelho');
   const [teamAColor, setTeamAColor] = useState('#ef4444');
+  const [teamAAvatar, setTeamAAvatar] = useState('');
   const [teamBName, setTeamBName] = useState('Time Azul');
   const [teamBColor, setTeamBColor] = useState('#3b82f6');
+  const [teamBAvatar, setTeamBAvatar] = useState('');
+  const [backgroundUrl, setBackgroundUrl] = useState('');
   const [scoreGoal, setScoreGoal] = useState('1000');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const config: AxBConfig = {
-      teamA: { id: 'A', name: teamAName, color: teamAColor },
-      teamB: { id: 'B', name: teamBName, color: teamBColor },
+    const config: AxBConfig & { backgroundUrl?: string } = {
+      teamA: {
+        id: 'A',
+        name: teamAName,
+        color: teamAColor,
+        ...(teamAAvatar ? { avatarUrl: teamAAvatar } : {}),
+      },
+      teamB: {
+        id: 'B',
+        name: teamBName,
+        color: teamBColor,
+        ...(teamBAvatar ? { avatarUrl: teamBAvatar } : {}),
+      },
       scoreGoal: Number(scoreGoal) || 1000,
       commentCooldownMs: 1000,
       intervalDurationMs: 5000,
       giftRules: DEFAULT_GIFT_RULES,
+      ...(backgroundUrl ? { backgroundUrl } : {}),
     };
 
     try {
@@ -103,73 +118,39 @@ export function AxBConfigForm() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5 p-3 rounded-lg border border-red-500/20 bg-red-500/5">
-              <Typography
-                variant="small"
-                className="font-semibold text-red-500"
-              >
-                Time A
-              </Typography>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="team-a-name" className="text-xs">
-                  Nome do Time A
-                </Label>
-                <Input
-                  id="team-a-name"
-                  value={teamAName}
-                  onChange={(e) => setTeamAName(e.target.value)}
-                  disabled={loading}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="team-a-color" className="text-xs">
-                  Cor HEX
-                </Label>
-                <Input
-                  id="team-a-color"
-                  type="text"
-                  value={teamAColor}
-                  onChange={(e) => setTeamAColor(e.target.value)}
-                  disabled={loading}
-                  required
-                />
-              </div>
-            </div>
+            <TeamConfigFields
+              teamKey="A"
+              name={teamAName}
+              color={teamAColor}
+              avatar={teamAAvatar}
+              loading={loading}
+              onNameChange={setTeamAName}
+              onColorChange={setTeamAColor}
+              onAvatarChange={setTeamAAvatar}
+            />
 
-            <div className="flex flex-col gap-1.5 p-3 rounded-lg border border-blue-500/20 bg-blue-500/5">
-              <Typography
-                variant="small"
-                className="font-semibold text-blue-500"
-              >
-                Time B
-              </Typography>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="team-b-name" className="text-xs">
-                  Nome do Time B
-                </Label>
-                <Input
-                  id="team-b-name"
-                  value={teamBName}
-                  onChange={(e) => setTeamBName(e.target.value)}
-                  disabled={loading}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="team-b-color" className="text-xs">
-                  Cor HEX
-                </Label>
-                <Input
-                  id="team-b-color"
-                  type="text"
-                  value={teamBColor}
-                  onChange={(e) => setTeamBColor(e.target.value)}
-                  disabled={loading}
-                  required
-                />
-              </div>
-            </div>
+            <TeamConfigFields
+              teamKey="B"
+              name={teamBName}
+              color={teamBColor}
+              avatar={teamBAvatar}
+              loading={loading}
+              onNameChange={setTeamBName}
+              onColorChange={setTeamBColor}
+              onAvatarChange={setTeamBAvatar}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="background-url">Imagem de Fundo (Wallpaper)</Label>
+            <Input
+              id="background-url"
+              type="url"
+              placeholder="https://... (opcional ou vazio para transparente/OBS)"
+              value={backgroundUrl}
+              onChange={(e) => setBackgroundUrl(e.target.value)}
+              disabled={loading}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">

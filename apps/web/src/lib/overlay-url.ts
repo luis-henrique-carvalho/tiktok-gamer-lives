@@ -1,5 +1,6 @@
 export type OverlayTheme = 'neon' | 'minimal';
 export type OverlayMode = 'simulation' | 'live';
+export type PrototypeVariantId = 'A' | 'B' | 'C' | 'none';
 
 export interface OverlaySearch {
   readonly sessionId: string | null;
@@ -7,6 +8,7 @@ export interface OverlaySearch {
   readonly mode: OverlayMode;
   readonly volume: number;
   readonly muted: boolean;
+  readonly variant?: PrototypeVariantId;
 }
 
 const DEFAULT_VOLUME = 0.6;
@@ -49,12 +51,21 @@ export function parseOverlaySearch(
     muted = raw.muted === 1;
   }
 
+  let variant: PrototypeVariantId | undefined;
+  if (typeof raw.variant === 'string') {
+    const v = raw.variant.toUpperCase();
+    if (v === 'A' || v === 'B' || v === 'C') {
+      variant = v as PrototypeVariantId;
+    }
+  }
+
   return {
     sessionId,
     theme,
     mode,
     volume,
     muted,
+    variant,
   };
 }
 
@@ -68,6 +79,9 @@ export function buildOverlayUrl(origin: string, search: OverlaySearch): string {
   params.set('mode', search.mode);
   params.set('volume', search.volume.toString());
   params.set('muted', search.muted ? '1' : '0');
+  if (search.variant) {
+    params.set('variant', search.variant);
+  }
 
   const queryString = params.toString();
   const path = `/overlay?${queryString}`;

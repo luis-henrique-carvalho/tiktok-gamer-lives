@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Swords, MessageSquare, Gift, Trophy } from 'lucide-react';
 import { formatScore } from '../formatters';
-import { ContributionAlertBadge } from '../components/contribution-alert-badge';
+import { ThemeAlertsBottomBar } from './theme-alerts-bottom-bar';
 import { RoundCelebrationBanner } from '../components/round-celebration-banner';
 import type { AxBRendererProps } from '../renderers/overlay-renderer-registry';
 
@@ -171,17 +171,13 @@ export function MinimalTheme({
             </div>
           )}
         </header>
-
-        {/* Live Contribution Alerts Stack */}
-        <div className="flex flex-col gap-2 w-full max-w-sm pointer-events-none mt-auto">
-          {alerts.map((alert) => (
-            <ContributionAlertBadge key={alert.id} alert={alert} />
-          ))}
-        </div>
       </div>
 
       {/* Reserved 20% Bottom Margin */}
       <div className="w-full h-[20%] pointer-events-none" />
+
+      {/* Live Contribution Alerts Stack: Ancorado na base inferior */}
+      <ThemeAlertsBottomBar alerts={alerts} />
 
       {/* Celebration Banner */}
       {celebration && (
