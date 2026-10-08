@@ -40,6 +40,27 @@ describe('Fastify Application (app.ts)', () => {
     expect(response.headers['access-control-allow-origin']).toBe(
       'https://example.com',
     );
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  it('should handle CORS preflight OPTIONS with credentials', async () => {
+    app = await buildApp({ corsOrigin: '*', logger: false });
+
+    const response = await app.inject({
+      method: 'OPTIONS',
+      url: '/api/auth/sign-in/email',
+      headers: {
+        origin: 'http://localhost:5180',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type',
+      },
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers['access-control-allow-origin']).toBe(
+      'http://localhost:5180',
+    );
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
   });
 
   it('serves OpenAPI documentation with all module routes registered', async () => {

@@ -38,7 +38,7 @@ services:
     container_name: tiktok-gamer-lives-api
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "${API_PORT:-3010}:3001"
     environment:
       PORT: "3001"
       HOST: "0.0.0.0"
@@ -63,7 +63,9 @@ services:
     container_name: tiktok-gamer-lives-web
     restart: unless-stopped
     ports:
-      - "5176:5176"
+      - "${WEB_PORT:-5180}:5180"
+    environment:
+      VITE_BACKEND_PROXY_TARGET: "http://api:3001"
     volumes:
       - .:/app
       - /app/node_modules

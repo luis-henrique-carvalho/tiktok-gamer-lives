@@ -61,11 +61,17 @@ export interface AxBIntervalExpiredCommand {
   readonly timestamp: number;
 }
 
+export interface AxBClearPendingCommand {
+  readonly type: 'CLEAR_PENDING';
+  readonly timestamp: number;
+}
+
 export type AxBCommand =
   | AxBVoteCommand
   | AxBGiftCommand
   | AxBResumeCommand
-  | AxBIntervalExpiredCommand;
+  | AxBIntervalExpiredCommand
+  | AxBClearPendingCommand;
 
 export interface AxBState {
   readonly currentRound: number;

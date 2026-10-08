@@ -46,22 +46,108 @@ export class AxBGameEngine implements GameEngine<
     context: ExecutionContext,
     config: AxBConfig = DEFAULT_AXB_CONFIG,
   ): DecisionResult<AxBState> {
+    const recovery = this.autoRecoverInterval(
+      state,
+      command.type,
+      context,
+      config,
+    );
+    const activeState = recovery.nextState;
+    const autoAdvancedEvents = recovery.events;
+    const autoAdvancedTimers = recovery.timerRequests;
+
+    let result: DecisionResult<AxBState>;
     switch (command.type) {
       case 'VOTE':
-        return this.applyVote(state, command, context, config);
+        result = this.applyVote(activeState, command, context, config);
+        break;
       case 'GIFT':
-        return this.applyGift(state, command, context, config);
+        result = this.applyGift(activeState, command, context, config);
+        break;
       case 'RESUME':
-        return this.applyResume(state, context, config);
+        result = this.applyResume(activeState, context, config);
+        break;
       case 'INTERVAL_EXPIRED':
-        return this.applyIntervalExpired(state, command, context, config);
+        result = this.applyIntervalExpired(
+          activeState,
+          command,
+          context,
+          config,
+        );
+        break;
+      case 'CLEAR_PENDING':
+        result = {
+          nextState: {
+            ...activeState,
+            pendingContributions: [],
+          },
+          status: 'APPLIED',
+        };
+        break;
       default:
-        return {
-          nextState: state,
+        result = {
+          nextState: activeState,
           status: 'IGNORED',
           reason: 'UNKNOWN_COMMAND',
         };
     }
+
+    const mergedEvents = [...autoAdvancedEvents, ...(result.events ?? [])];
+    const mergedTimers = [
+      ...autoAdvancedTimers,
+      ...(result.timerRequests ?? []),
+    ];
+
+    return {
+      ...result,
+      events: mergedEvents.length > 0 ? mergedEvents : undefined,
+      timerRequests: mergedTimers.length > 0 ? mergedTimers : undefined,
+    };
+  }
+
+  private autoRecoverInterval(
+    state: AxBState,
+    commandType: string,
+    context: ExecutionContext,
+    config: AxBConfig,
+  ): {
+    nextState: AxBState;
+    events: GameEvent[];
+    timerRequests: TimerRequest[];
+  } {
+    if (
+      state.roundStatus !== 'INTERVAL' ||
+      commandType === 'INTERVAL_EXPIRED'
+    ) {
+      return { nextState: state, events: [], timerRequests: [] };
+    }
+
+    const lastHistory =
+      state.history && state.history.length > 0
+        ? state.history[state.history.length - 1]
+        : undefined;
+
+    if (
+      !lastHistory ||
+      context.timestamp - lastHistory.completedAt < config.intervalDurationMs
+    ) {
+      return { nextState: state, events: [], timerRequests: [] };
+    }
+
+    const intervalResult = this.applyIntervalExpired(
+      state,
+      { type: 'INTERVAL_EXPIRED', timestamp: context.timestamp },
+      context,
+      config,
+    );
+
+    return {
+      nextState: intervalResult.nextState,
+      events: intervalResult.events ? [...intervalResult.events] : [],
+      timerRequests: intervalResult.timerRequests
+        ? [...intervalResult.timerRequests]
+        : [],
+    };
   }
 
   private applyVote(
@@ -165,6 +251,40 @@ export class AxBGameEngine implements GameEngine<
   ): DecisionResult<AxBState> {
     if (context.isPaused) {
       return { nextState: state, status: 'DEFERRED', reason: 'SESSION_PAUSED' };
+    }
+
+    if (state.roundStatus === 'INTERVAL') {
+      const lastHistory =
+        state.history && state.history.length > 0
+          ? state.history[state.history.length - 1]
+          : undefined;
+
+      const elapsed = lastHistory
+        ? context.timestamp - lastHistory.completedAt
+        : config.intervalDurationMs;
+
+      if (elapsed >= config.intervalDurationMs) {
+        return this.applyIntervalExpired(
+          state,
+          { type: 'INTERVAL_EXPIRED', timestamp: context.timestamp },
+          context,
+          config,
+        );
+      } else {
+        const remainingMs = Math.max(100, config.intervalDurationMs - elapsed);
+        return {
+          nextState: state,
+          status: 'APPLIED',
+          timerRequests: [
+            {
+              id: `interval-round-${state.currentRound}`,
+              delayMs: remainingMs,
+              type: 'INTERVAL_EXPIRED',
+              payload: { round: state.currentRound },
+            },
+          ],
+        };
+      }
     }
 
     if (state.roundStatus !== 'ACTIVE') {

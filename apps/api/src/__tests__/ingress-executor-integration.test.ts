@@ -7,7 +7,6 @@ import {
   closeRedisConnection,
 } from '../common/infrastructure/queue/redis.connection.js';
 import { createQueue } from '../common/infrastructure/queue/queue.factory.js';
-import { QUEUE_NAMES } from '../common/infrastructure/queue/queue.constants.js';
 import { DrizzleSessionRepository } from '../modules/sessions/infrastructure/database/drizzle/drizzle-session.repository.js';
 import { DrizzleSnapshotRepository } from '../modules/sessions/infrastructure/database/drizzle/drizzle-snapshot.repository.js';
 import { DrizzleInteractionRepository } from '../modules/sessions/infrastructure/database/drizzle/drizzle-interaction.repository.js';
@@ -49,7 +48,8 @@ describe('Ingress & Serial FIFO Execution Integration Flow', () => {
     gameRegistry = new GameRegistry();
     gameRegistry.registerGame(axbGameModule);
 
-    commandQueue = createQueue(QUEUE_NAMES.GAME_COMMANDS, redis);
+    const ingressQueueName = `game-commands-ingress-${randomUUID()}`;
+    commandQueue = createQueue(ingressQueueName, redis);
     timerService = new DeclarativeTimerService(commandQueue);
 
     processInteractionUseCase = new ProcessInteractionUseCase(
@@ -87,6 +87,7 @@ describe('Ingress & Serial FIFO Execution Integration Flow', () => {
   });
 
   afterAll(async () => {
+    await commandQueue.obliterate({ force: true });
     await commandQueue.close();
     await closeRedisConnection();
   });
@@ -137,7 +138,7 @@ describe('Ingress & Serial FIFO Execution Integration Flow', () => {
         },
       });
 
-      expect(result.snapshot.sequence).toBe(i + 1); // Started at 0 on startSession
+      expect(result.snapshot?.sequence).toBe(i + 1); // Started at 0 on startSession
     }
 
     const latest = await snapshotRepo.findLatestBySessionId(sessionId);
@@ -161,10 +162,10 @@ describe('Ingress & Serial FIFO Execution Integration Flow', () => {
       },
     });
 
-    expect(result.decision.roundEnded).toBe(true);
-    expect(result.decision.winnerTeamId).toBe('A');
-    expect(result.decision.timerRequests).toBeDefined();
-    expect(result.decision.timerRequests?.length).toBeGreaterThan(0);
+    expect(result.decision?.roundEnded).toBe(true);
+    expect(result.decision?.winnerTeamId).toBe('A');
+    expect(result.decision?.timerRequests).toBeDefined();
+    expect(result.decision?.timerRequests?.length).toBeGreaterThan(0);
   });
 
   it('4. Session Lifecycle & Pause / Resume FIFO Drain', async () => {

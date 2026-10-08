@@ -73,3 +73,79 @@ export const simulatorBurstDocs: FastifySchema = {
     },
   },
 };
+
+export const simulatorVoteDocs: FastifySchema = {
+  tags: ['Simulator Ingress'],
+  summary: 'Send manual vote to team A or B',
+  body: {
+    type: 'object',
+    required: ['sessionId', 'team'],
+    properties: {
+      sessionId: { type: 'string' },
+      team: { type: 'string', enum: ['A', 'B'] },
+      userId: { type: 'string' },
+      userName: { type: 'string' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        sessionId: { type: 'string' },
+        team: { type: 'string' },
+        result: { type: 'object', additionalProperties: true },
+      },
+    },
+  },
+};
+
+export const simulatorGiftDocs: FastifySchema = {
+  tags: ['Simulator Ingress'],
+  summary: 'Send manual gift contribution to team A or B',
+  body: {
+    type: 'object',
+    required: ['sessionId', 'team'],
+    properties: {
+      sessionId: { type: 'string' },
+      team: { type: 'string', enum: ['A', 'B'] },
+      units: { type: 'integer', minimum: 1 },
+      userId: { type: 'string' },
+      userName: { type: 'string' },
+      resourceKey: { type: 'string' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        sessionId: { type: 'string' },
+        team: { type: 'string' },
+        units: { type: 'number' },
+        result: { type: 'object', additionalProperties: true },
+      },
+    },
+  },
+};
+
+export const simulatorClearPendingDocs: FastifySchema = {
+  tags: ['Simulator Ingress'],
+  summary: 'Clear pending contributions queue for a session',
+  body: {
+    type: 'object',
+    required: ['sessionId'],
+    properties: {
+      sessionId: { type: 'string' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        sessionId: { type: 'string' },
+      },
+    },
+  },
+};

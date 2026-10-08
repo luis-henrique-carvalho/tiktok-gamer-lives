@@ -13,7 +13,7 @@ COPY apps/web/package.json ./apps/web/
 # Install all dependencies for the workspace
 RUN pnpm install --frozen-lockfile
 
-EXPOSE 5176
+EXPOSE 5180
 
-CMD ["pnpm", "--filter", "web", "dev", "--", "--host", "0.0.0.0", "--port", "5176"]
+CMD ["pnpm", "--filter", "web", "dev", "--", "--host", "0.0.0.0", "--port", "5180"]
 

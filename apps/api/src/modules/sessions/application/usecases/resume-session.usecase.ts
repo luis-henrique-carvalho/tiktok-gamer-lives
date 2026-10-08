@@ -58,6 +58,14 @@ export class ResumeSessionUseCase {
       session.id,
     );
 
+    // Enqueue RESUME command to notify engine and wake up interval or pending state
+    await this.commandQueue.add('execute-command', {
+      sessionId: session.id,
+      gameId: session.gameId,
+      command: { type: 'RESUME', timestamp: Date.now() },
+      timestamp: Date.now(),
+    });
+
     let drainedCount = 0;
     for (const item of pending) {
       const interactionObj = {

@@ -256,42 +256,20 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
 
 ---
 
-### Fase 6: Frontend — TanStack Start, Base shadcn/ui & Autenticação
+### Fase 6: Frontend — TanStack Start, Base shadcn/ui & Autenticação — `[CONCLUÍDA]`
 
 - **Objetivo**: Configurar a fundação do frontend `apps/web` baseada em `viralforge/web`, com Vite, React 19, Tailwind CSS v4, componentes primitivos shadcn/ui e tela de login protegida por Better Auth.
 - **Metodologia**: Scaffolding e UI Features (primitivos declarativos).
-- **Arquivos a Criar**:
-  - `apps/web/components.json` (shadcn/ui New York Slate).
-  - `apps/web/src/styles/index.css` e `apps/web/src/styles/theme.css`.
-  - `apps/web/src/lib/utils.ts`, `query-client.ts`, `auth-client.ts`.
-  - `apps/web/src/lib/socket-client.ts` — **Com acumulador de snapshots (batching)**:
-    > Sob rajadas, o servidor pode emitir ~20 snapshots/s (após coalescência server-side). Mesmo assim, atualizar o estado do React a cada evento causa re-renders excessivos que bloqueiam o thread principal do browser — especialmente no OBS Browser Source.
-    - O `socket-client` implementa um **acumulador `requestAnimationFrame`**: recebe eventos `snapshot` do Socket.IO, guarda apenas o snapshot mais recente em uma variável mutable (latest-wins, sem setState), e a cada frame (`requestAnimationFrame` ~60fps) faz flush para o Zustand store somente se houve mudança desde o último frame.
-    - Resultado: independente de quantos snapshots cheguem por segundo, o React re-renderiza no máximo **60 vezes por segundo**, alinhado com a taxa de atualização do display e do OBS.
-    - Eventos `contribution_alert` continuam sendo processados imediatamente (sem acumulador) para feedback instantâneo.
-  - `apps/web/src/api/types.ts` — **Tipos locais** dos payloads REST e Socket.IO consumidos:
-    ```typescript
-    // Tipos que o frontend define LOCALMENTE para consumir a API
-    export interface SessionResponse { id: string; status: string; gameId: string; /* ... */ }
-    export interface AxBProjectionPayload { scoreA: number; scoreB: number; round: number; /* ... */ }
-    export interface SnapshotEvent { type: 'snapshot'; payload: AxBProjectionPayload; version: number; }
-    export interface ContributionAlertEvent { type: 'contribution_alert'; username: string; /* ... */ }
-    ```
-  - `apps/web/src/api/client.ts` — Funções fetch tipadas para os endpoints REST:
-    ```typescript
-    export async function createSession(config: CreateSessionInput): Promise<SessionResponse> { /* ... */ }
-    export async function startSession(sessionId: string): Promise<void> { /* ... */ }
-    export async function pauseSession(sessionId: string): Promise<void> { /* ... */ }
-    ```
-  - `apps/web/src/components/ui/` (`button.tsx`, `card.tsx`, `input.tsx`, `slider.tsx`, `switch.tsx`, `badge.tsx`, `progress.tsx`, `tabs.tsx`, `select.tsx`, `tooltip.tsx`, `sonner.tsx`).
-  - `apps/web/src/routes/__root.tsx` (QueryClient, Tooltip, Toaster, Devtools).
-  - `apps/web/src/routes/index.tsx`, `apps/web/src/routes/login.tsx`.
-  - `apps/web/src/features/auth/views/LoginView.tsx`, `components/LoginForm.tsx`.
-- **Critério de Conclusão**: Aplicação web inicia na porta 5176 sem erros; tela de login renderiza; fluxo de registro e login com Better Auth funciona gravando sessão; `apps/web` não tem nenhuma dependência de workspace para `apps/api`.
+- **Arquivos Criados**:
+  - `apps/web/src/lib/auth-client.ts`, `apps/web/src/lib/socket-client.ts` (com acumulador rAF ~60fps).
+  - `apps/web/src/api/types.ts`, `apps/web/src/api/client.ts`.
+  - `apps/web/src/features/auth/components/login-form.tsx`, `apps/web/src/features/auth/views/login-view.tsx`.
+  - `apps/web/src/routes/login.tsx`, `apps/web/src/routes/dashboard.tsx`.
+- **Critério de Conclusão**: Aplicação web inicia sem erros; tela de login renderiza e autentica via Better Auth; `apps/web` 100% desacoplado de `apps/api`.
 
 ---
 
-### Fase 7: Frontend — Dashboard do Operador (`/dashboard`)
+### Fase 7: Frontend — Dashboard do Operador (`/dashboard`) — `[CONCLUÍDA]`
 
 - **Objetivo**: Implementar o painel completo do streamer em `features/dashboard/`, permitindo configurar regras, operar a sessão, acionar o simulador e monitorar métricas em tempo real.
 - **Metodologia**: Desenvolvimento Feature-Driven & Integração de Estado com Zustand e TanStack Query.

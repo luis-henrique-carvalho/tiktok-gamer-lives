@@ -33,3 +33,29 @@ export const tiktokConnectSchema = z.object({
 });
 
 export type TikTokConnectDto = z.infer<typeof tiktokConnectSchema>;
+
+export const manualVoteSchema = z.object({
+  sessionId: z.string().min(1, 'sessionId is required'),
+  team: z.enum(['A', 'B']),
+  userId: z.string().optional(),
+  userName: z.string().optional(),
+});
+
+export type ManualVoteDto = z.infer<typeof manualVoteSchema>;
+
+export const manualGiftSchema = z.object({
+  sessionId: z.string().min(1, 'sessionId is required'),
+  team: z.enum(['A', 'B']),
+  units: z.number().int().positive().optional(),
+  userId: z.string().optional(),
+  userName: z.string().optional(),
+  resourceKey: z.string().optional(),
+});
+
+export type ManualGiftDto = z.infer<typeof manualGiftSchema>;
+
+export const clearPendingSchema = z.object({
+  sessionId: z.string().min(1, 'sessionId is required'),
+});
+
+export type ClearPendingDto = z.infer<typeof clearPendingSchema>;

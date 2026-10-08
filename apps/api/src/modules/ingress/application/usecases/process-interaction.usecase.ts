@@ -40,6 +40,20 @@ export class ProcessInteractionUseCase {
     private readonly commandQueue: Queue,
   ) {}
 
+  async clearPending(sessionId: string): Promise<boolean> {
+    const session = await this.sessionRepository.findById(sessionId);
+    if (!session) {
+      return false;
+    }
+    await this.commandQueue.add('execute-command', {
+      sessionId: session.id,
+      gameId: session.gameId,
+      command: { type: 'CLEAR_PENDING', timestamp: Date.now() },
+      timestamp: Date.now(),
+    });
+    return true;
+  }
+
   async execute(
     input: ProcessInteractionInput,
   ): Promise<ProcessInteractionResult> {

@@ -19,9 +19,11 @@ export interface ProcessGameCommandInput {
 }
 
 export interface ProcessGameCommandResult {
-  snapshot: GameSnapshot;
-  decision: DecisionResult<unknown>;
-  projection: unknown;
+  snapshot?: GameSnapshot;
+  decision?: DecisionResult<unknown>;
+  projection?: unknown;
+  ignored?: boolean;
+  reason?: string;
 }
 
 export class ProcessGameCommandUseCase {
@@ -40,6 +42,10 @@ export class ProcessGameCommandUseCase {
       throw new NotFoundError(
         `Session with id "${input.sessionId}" was not found`,
       );
+    }
+
+    if (session.status === SessionStatus.ENDED) {
+      return { ignored: true, reason: 'SESSION_ENDED' };
     }
 
     const game = this.gameRegistry.getGame(input.gameId);
@@ -70,9 +76,13 @@ export class ProcessGameCommandUseCase {
       session.config,
     );
 
+    const pendingCount =
+      (decisionResult.nextState as { pendingContributions?: unknown[] })
+        ?.pendingContributions?.length ?? 0;
+
     const meta: ProjectionMeta = {
       isPaused: session.status === SessionStatus.PAUSED,
-      pendingCount: 0,
+      pendingCount,
     };
 
     const projection = game.projection.project(

@@ -21,6 +21,34 @@ describe('Ingress HTTP Routes (Simulator & TikTok)', () => {
       start: vi.fn(),
       stop: vi.fn(),
       triggerBurst: vi.fn().mockResolvedValue({ totalGenerated: 200 }),
+      sendManualVote: vi.fn().mockResolvedValue({
+        success: true,
+        interaction: {
+          id: 'sim-manual-vote-1',
+          source: 'SIMULATOR',
+          type: 'comment',
+          comment: 'A',
+          userId: 'user-1',
+          userName: 'Simulated Voter (Team A)',
+          timestamp: 1000,
+        },
+        status: 'PROCESSED',
+      }),
+      sendManualGift: vi.fn().mockResolvedValue({
+        success: true,
+        interaction: {
+          id: 'sim-manual-gift-1',
+          source: 'SIMULATOR',
+          type: 'gift_contribution',
+          resourceKey: 'tiktok:gift:5655',
+          units: 5,
+          userId: 'user-2',
+          userName: 'Simulated Gifter (Team A)',
+          timestamp: 1000,
+        },
+        status: 'PROCESSED',
+      }),
+      clearPending: vi.fn().mockResolvedValue({ success: true }),
       isRunning: vi.fn().mockReturnValue(true),
       getCurrentSessionId: vi.fn().mockReturnValue('session-sim-1'),
     } as unknown as SimulatorCaptureAdapter;
@@ -111,6 +139,113 @@ describe('Ingress HTTP Routes (Simulator & TikTok)', () => {
           totalEvents: 200,
           eventsPerSecond: 200,
         },
+      );
+    });
+
+    it('POST /api/simulator/vote - sends manual vote with custom user', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/simulator/vote',
+        payload: {
+          sessionId: 'session-sim-1',
+          team: 'A',
+          userId: 'user-1',
+          userName: 'Tester A',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(
+        expect.objectContaining({
+          success: true,
+          sessionId: 'session-sim-1',
+          team: 'A',
+        }),
+      );
+      expect(mockSimulatorAdapter.sendManualVote).toHaveBeenCalledWith({
+        sessionId: 'session-sim-1',
+        team: 'A',
+        userId: 'user-1',
+        userName: 'Tester A',
+      });
+    });
+
+    it('POST /api/simulator/vote - rejects invalid vote payload', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/simulator/vote',
+        payload: {
+          sessionId: '',
+          team: 'INVALID',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('POST /api/simulator/gift - sends manual gift with units and alias', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/simulator/gift',
+        payload: {
+          sessionId: 'session-sim-1',
+          team: 'A',
+          units: 5,
+          userId: 'user-2',
+          userName: 'Gifter A',
+          resourceKey: 'rose',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(
+        expect.objectContaining({
+          success: true,
+          sessionId: 'session-sim-1',
+          team: 'A',
+          units: 5,
+        }),
+      );
+      expect(mockSimulatorAdapter.sendManualGift).toHaveBeenCalledWith({
+        sessionId: 'session-sim-1',
+        team: 'A',
+        units: 5,
+        userId: 'user-2',
+        userName: 'Gifter A',
+        resourceKey: 'rose',
+      });
+    });
+
+    it('POST /api/simulator/gift - rejects invalid gift units', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/simulator/gift',
+        payload: {
+          sessionId: 'session-sim-1',
+          team: 'B',
+          units: -1,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('POST /api/simulator/clear-pending - clears pending contributions', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/simulator/clear-pending',
+        payload: {
+          sessionId: 'session-sim-1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        success: true,
+        sessionId: 'session-sim-1',
+      });
+      expect(mockSimulatorAdapter.clearPending).toHaveBeenCalledWith(
+        'session-sim-1',
       );
     });
   });

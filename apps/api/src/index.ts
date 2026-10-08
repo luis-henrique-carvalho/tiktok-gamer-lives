@@ -8,6 +8,7 @@ export async function main(): Promise<void> {
   const app = await buildApp({
     logger: env.NODE_ENV !== 'test',
     corsOrigin: env.CORS_ORIGIN,
+    startWorker: true,
   });
 
   const stop = async (signal: string) => {

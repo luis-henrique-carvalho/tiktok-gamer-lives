@@ -2,6 +2,9 @@ import type { SimulatorCaptureAdapter } from '../../simulator/simulator-capture.
 import {
   simulatorStartSchema,
   simulatorBurstSchema,
+  manualVoteSchema,
+  manualGiftSchema,
+  clearPendingSchema,
 } from '../dtos/ingress-http.dto.js';
 
 export class SimulatorController {
@@ -40,6 +43,53 @@ export class SimulatorController {
       status: 'COMPLETED',
       sessionId: input.sessionId,
       totalGenerated: result.totalGenerated,
+    };
+  }
+
+  async vote(body: unknown) {
+    const input = manualVoteSchema.parse(body);
+    const result = await this.simulatorAdapter.sendManualVote({
+      sessionId: input.sessionId,
+      team: input.team,
+      userId: input.userId,
+      userName: input.userName,
+    });
+
+    return {
+      success: true,
+      sessionId: input.sessionId,
+      team: input.team,
+      result,
+    };
+  }
+
+  async gift(body: unknown) {
+    const input = manualGiftSchema.parse(body);
+    const result = await this.simulatorAdapter.sendManualGift({
+      sessionId: input.sessionId,
+      team: input.team,
+      units: input.units,
+      userId: input.userId,
+      userName: input.userName,
+      resourceKey: input.resourceKey,
+    });
+
+    return {
+      success: true,
+      sessionId: input.sessionId,
+      team: input.team,
+      units: input.units ?? 1,
+      result,
+    };
+  }
+
+  async clearPending(body: unknown) {
+    const input = clearPendingSchema.parse(body);
+    const result = await this.simulatorAdapter.clearPending(input.sessionId);
+
+    return {
+      success: result.success,
+      sessionId: input.sessionId,
     };
   }
 }

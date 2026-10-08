@@ -7,8 +7,15 @@ export interface EndSessionInput {
   sessionId: string;
 }
 
+export type OnSessionEndedCallback = (
+  sessionId: string,
+) => void | Promise<void>;
+
 export class EndSessionUseCase {
-  constructor(private readonly sessionRepository: SessionRepository) {}
+  constructor(
+    private readonly sessionRepository: SessionRepository,
+    private readonly onSessionEnded?: OnSessionEndedCallback,
+  ) {}
 
   async execute(input: EndSessionInput): Promise<GameSession> {
     const session = await this.sessionRepository.findById(input.sessionId);
@@ -34,6 +41,8 @@ export class EndSessionUseCase {
         `Failed to end session with id "${input.sessionId}"`,
       );
     }
+
+    await this.onSessionEnded?.(session.id);
 
     return updatedSession;
   }

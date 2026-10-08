@@ -308,7 +308,13 @@ describe('Session Lifecycle Use Cases', () => {
 
       expect(result.session.status).toBe(SessionStatus.RUNNING);
       expect(result.drainedCount).toBe(2);
-      expect(commandQueue.add).toHaveBeenCalledTimes(2);
+      expect(commandQueue.add).toHaveBeenCalledTimes(3);
+      expect(commandQueue.add).toHaveBeenCalledWith(
+        'execute-command',
+        expect.objectContaining({
+          command: expect.objectContaining({ type: 'RESUME' }),
+        }),
+      );
       expect(interactionRepo.updateStatus).toHaveBeenCalledWith(
         'int-1',
         InteractionStatus.PROCESSED,
@@ -438,6 +444,35 @@ describe('Session Lifecycle Use Cases', () => {
       await expect(endUsecase.execute({ sessionId: s.id })).rejects.toThrow(
         NotFoundError,
       );
+    });
+
+    it('should invoke onSessionEnded hook with sessionId when session is successfully ended', async () => {
+      await sessionRepo.create({
+        id: 'sess-hook',
+        gameId: 'axb',
+        operatorId: 'op-1',
+        title: 'Hook Test',
+        status: SessionStatus.RUNNING,
+        config: DEFAULT_AXB_CONFIG as unknown as Record<string, unknown>,
+      });
+
+      const onSessionEnded = vi.fn();
+      const endUsecase = new EndSessionUseCase(sessionRepo, onSessionEnded);
+      await endUsecase.execute({ sessionId: 'sess-hook' });
+
+      expect(onSessionEnded).toHaveBeenCalledTimes(1);
+      expect(onSessionEnded).toHaveBeenCalledWith('sess-hook');
+    });
+
+    it('should not invoke onSessionEnded hook if session fails to end', async () => {
+      const onSessionEnded = vi.fn();
+      const endUsecase = new EndSessionUseCase(sessionRepo, onSessionEnded);
+
+      await expect(
+        endUsecase.execute({ sessionId: 'non-existent' }),
+      ).rejects.toThrow(NotFoundError);
+
+      expect(onSessionEnded).not.toHaveBeenCalled();
     });
   });
 });

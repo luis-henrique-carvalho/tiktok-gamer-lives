@@ -18,8 +18,8 @@ describe('IndexPage Route Component', () => {
 
     expect(screen.getByText('Ultra Baixa Latência')).toBeInTheDocument();
     expect(screen.getByText('Gamificação')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Explorar Dashboard/i }),
-    ).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /Explorar Dashboard/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', '/dashboard');
   });
 });

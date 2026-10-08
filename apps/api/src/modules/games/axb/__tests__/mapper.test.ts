@@ -146,6 +146,58 @@ describe('AxBInputMapper (TDD Red -> Green)', () => {
       });
     });
 
+    it('maps gifts using human-friendly alias keys (e.g. rose <-> tiktok:gift:5655, perfume/heart <-> tiktok:gift:5879)', () => {
+      const aliasConfig = {
+        ...DEFAULT_AXB_CONFIG,
+        giftRules: [
+          { resourceKey: 'rose', targetTeam: 'A' as const, pointsPerUnit: 10 },
+          { resourceKey: 'heart', targetTeam: 'B' as const, pointsPerUnit: 20 },
+        ],
+      };
+
+      const tiktokGiftA: RecognizedGiftContribution = {
+        id: 'c-1',
+        source: 'TIKTOK_LIVE',
+        type: 'gift_contribution',
+        userId: 'u-1',
+        userName: 'Alice',
+        resourceKey: 'tiktok:gift:5655',
+        units: 2,
+        timestamp: 1000,
+      };
+
+      const resultA = mapper.mapInteraction(tiktokGiftA, aliasConfig);
+      expect(resultA).toEqual({
+        type: 'GIFT',
+        team: 'A',
+        pointsPerUnit: 10,
+        resourceKey: 'tiktok:gift:5655',
+        units: 2,
+        timestamp: 1000,
+      });
+
+      const tiktokGiftB: RecognizedGiftContribution = {
+        id: 'c-2',
+        source: 'TIKTOK_LIVE',
+        type: 'gift_contribution',
+        userId: 'u-2',
+        userName: 'Bob',
+        resourceKey: 'tiktok:gift:5879',
+        units: 1,
+        timestamp: 2000,
+      };
+
+      const resultB = mapper.mapInteraction(tiktokGiftB, aliasConfig);
+      expect(resultB).toEqual({
+        type: 'GIFT',
+        team: 'B',
+        pointsPerUnit: 20,
+        resourceKey: 'tiktok:gift:5879',
+        units: 1,
+        timestamp: 2000,
+      });
+    });
+
     it('returns null for unmapped / unknown gifts (RG-07)', () => {
       const unknownContribution: RecognizedGiftContribution = {
         id: 'contribution-unknown',
