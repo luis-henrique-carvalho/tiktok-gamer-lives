@@ -48,7 +48,12 @@ export default defineConfig(({ mode }) => {
       host,
       allowedHosts: true,
       watch: {
-        ignored: ['**/coverage/**', '**/dist/**', '**/__tests__/**', '**/*.test.*'],
+        ignored: [
+          '**/coverage/**',
+          '**/dist/**',
+          '**/__tests__/**',
+          '**/*.test.*',
+        ],
       },
       proxy: {
         '/api': {

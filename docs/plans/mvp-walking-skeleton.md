@@ -288,25 +288,33 @@ A implementação é dividida em **9 fases sequenciais**, detalhando objetivos, 
 
 ---
 
-### Fase 8: Frontend — Overlay OBS (`/overlay`), Templates & Efeitos de Áudio
+### Fase 8: Frontend — Overlay OBS (`/overlay`), Templates & Efeitos de Áudio — `[CONCLUÍDA]`
 
 - **Objetivo**: Desenvolver a tela transparente 1080×1920 para o OBS Browser Source, com sistema desacoplado de templates plugáveis e sintetizador procedural de áudio com Web Audio API.
 - **Metodologia**: Visual, Animações CSS & Áudio Web API.
-- **Arquivos a Criar**:
+- **Arquivos Criados**:
   - `apps/web/src/routes/overlay.tsx`.
-  - `apps/web/src/features/overlay/views/OverlayView.tsx` (Layout 1080×1920, fundo transparente, distintivo permanente de simulação).
-  - `apps/web/src/features/overlay/themes/NeonArenaTheme.tsx` (Torres neon com barras de energia, partículas e altura proporcional aos pontos).
-  - `apps/web/src/features/overlay/themes/MinimalTheme.tsx` (Layout minimalista esport de alto contraste).
-  - `apps/web/src/features/overlay/components/ContributionAlertBadge.tsx` (Badge com nome do espectador, presente e pontos).
-  - `apps/web/src/features/overlay/components/RoundCelebrationBanner.tsx` (Banner de vitória e contagem regressiva de 5s).
-  - `apps/web/src/features/overlay/components/AudioEffectPlayer.tsx` — **Com limitador de polifonia**:
+  - `apps/web/src/features/overlay/views/overlay-view.tsx` (Layout 1080×1920, fundo transparente, distintivo permanente de simulação).
+  - `apps/web/src/features/overlay/themes/neon-arena-theme.tsx` (Torres neon com barras de energia, partículas e altura proporcional aos pontos).
+  - `apps/web/src/features/overlay/themes/neon-tower.tsx` (Torre neon desacoplada com aceleração por GPU).
+  - `apps/web/src/features/overlay/themes/minimal-theme.tsx` (Layout minimalista esport de alto contraste).
+  - `apps/web/src/features/overlay/renderers/overlay-renderer-registry.tsx` (Registro extensível por jogo e tema).
+  - `apps/web/src/features/overlay/renderers/unsupported-game-fallback.tsx` (Fallback elegante para jogos não suportados).
+  - `apps/web/src/features/overlay/components/contribution-alert-badge.tsx` (Badge com nome do espectador, presente e pontos).
+  - `apps/web/src/features/overlay/components/round-celebration-banner.tsx` (Banner de vitória e contagem regressiva viva).
+  - `apps/web/src/features/overlay/components/audio-effect-player.tsx` (Desbloqueio de áudio em navegadores com restrição de autoplay).
+  - `apps/web/src/features/overlay/audio/audio-effect-engine.ts` — **Com limitador de polifonia**:
     > 50 presentes disparados no mesmo segundo criam 50 instâncias de som sobrepostas, resultando em distorção digital (clipping) e saturação da CPU do OBS.
     - Implementa um **cooldown por tipo de som** (configurável, default 80ms): se o mesmo tipo de efeito (ex: "rosa") é disparado dentro da janela de cooldown, não cria nova instância de `OscillatorNode`.
     - Em vez de tocar novamente, aplica **pitch escalation**: incrementa levemente a frequência do oscilador ativo (+20Hz por evento agrupado) e aumenta o gain em +1dB (com teto de segurança), dando sensação de escala e urgência sem multiplicar instâncias.
     - Limite máximo de **4 vozes simultâneas** (`maxPolyphony`): se 4 sons diferentes estão tocando, o mais antigo é terminado (FIFO) antes de iniciar o novo.
     - Sons de vitória/fanfarra são exceção: sempre tocam imediatamente com prioridade, cancelando efeitos de contribuição ativos.
-  - `apps/web/src/features/overlay/stores/useOverlayStore.ts`.
-- **Critério de Conclusão**: Overlay renderiza no OBS a 60 FPS com fundo transparente; torres sobem proporcionalmente às pontuações recebidas via Socket.IO; áudio toca sincronizado; ao bater a meta, a celebração e a contagem de 5s são exibidas perfeitamente.
+  - `apps/web/src/features/overlay/stores/use-overlay-store.ts` (Store Zustand com agregação de alertas e transições).
+  - `apps/web/src/features/overlay/hooks/use-overlay-session.ts` (Hook de sessão integrando RealtimeClient, AudioEffectEngine e Store).
+  - `apps/web/src/lib/overlay-url.ts` (Parser e builder com validação defensiva de parâmetros).
+  - `apps/web/src/features/dashboard/components/overlay-link-card.tsx` (Card no dashboard para configurar e copiar link OBS).
+  - `apps/web/src/features/dashboard/components/overlay-volume-controls.tsx` (Controles de volume e mudo).
+- **Critério de Conclusão**: Overlay renderiza no OBS a 60 FPS com fundo transparente; torres sobem proporcionalmente às pontuações recebidas via Socket.IO; áudio toca sincronizado sem saturação; ao bater a meta, a celebração e a contagem viva são exibidas perfeitamente. Cobertura de testes >= 85% alcançada (94.02%).
 
 ---
 

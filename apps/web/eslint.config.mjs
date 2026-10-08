@@ -85,7 +85,10 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'error',
       'react/self-closing-comp': 'error',
       'react/jsx-no-useless-fragment': 'error',
-      'react/jsx-curly-brace-presence': ['error', { props: 'never', children: 'never' }],
+      'react/jsx-curly-brace-presence': [
+        'error',
+        { props: 'never', children: 'never' },
+      ],
       'react/no-array-index-key': 'warn',
       'max-lines-per-function': [
         'error',

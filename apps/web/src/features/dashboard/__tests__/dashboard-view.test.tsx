@@ -127,7 +127,8 @@ describe('DashboardView', () => {
     expect(screen.getByText('Dashboard do Operador')).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: /abrir overlay/i }),
-    ).toHaveAttribute('href', '/overlay');
+    ).toHaveAttribute('href', expect.stringContaining('/overlay'));
+    expect(screen.getByText('Link do Overlay OBS')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument();
   });
 

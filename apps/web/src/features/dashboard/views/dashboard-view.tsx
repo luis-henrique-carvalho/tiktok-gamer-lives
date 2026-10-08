@@ -13,6 +13,8 @@ import { SimulatorPanel } from '../components/simulator-panel';
 import { MetricsCard } from '../components/metrics-card';
 import { EventsHistoryLog } from '../components/events-history-log';
 import { MatchScoreboardCard } from '../components/match-scoreboard-card';
+import { OverlayLinkCard } from '../components/overlay-link-card';
+import { buildOverlayUrl } from '@/lib/overlay-url';
 import { getSession } from '@/api/client';
 import type { GameSession, GameSnapshot, AxBProjection } from '@/api/types';
 
@@ -179,6 +181,21 @@ export function DashboardView({ onSignOut }: DashboardViewProps) {
     onSignOut?.();
   };
 
+  const isTikTokConnected = useDashboardStore(
+    (s) => s.tiktokStatus?.status === 'connected',
+  );
+
+  const headerOverlayUrl = buildOverlayUrl(
+    typeof window !== 'undefined' ? window.location.origin : '',
+    {
+      sessionId: session?.id ?? null,
+      theme: 'neon',
+      mode: isTikTokConnected ? 'live' : 'simulation',
+      volume: 0.6,
+      muted: false,
+    },
+  );
+
   const displayProjection = computeDisplayProjection(snapshot, session);
 
   return (
@@ -211,7 +228,7 @@ export function DashboardView({ onSignOut }: DashboardViewProps) {
 
           <div className="flex items-center gap-2">
             <a
-              href="/overlay"
+              href={headerOverlayUrl}
               target="_blank"
               rel="noreferrer"
               className={buttonVariants({
@@ -251,6 +268,7 @@ export function DashboardView({ onSignOut }: DashboardViewProps) {
             <SessionControls />
             <AxBConfigForm />
             <TikTokConnectorCard />
+            <OverlayLinkCard />
           </div>
 
           {/* Right Column: Ingress Simulation, Telemetry & Logs */}
