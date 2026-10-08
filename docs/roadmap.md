@@ -28,8 +28,9 @@ flowchart LR
         N3["3. Persistência & Better Auth: Drizzle ORM ✅"]
         N4["4. Ingress & Fila Serial FIFO: BullMQ conc=1 ✅"]
         N5["5. Adaptadores, Socket.IO & Rotas Fastify ✅"]
-        N6["6. Frontend: Dashboard, Overlay OBS & Áudio 🎯"]
-        N1 --> N2 --> N3 --> N4 --> N5 --> N6
+        N6["6. Frontend: Dashboard & Simulador ✅"]
+        N7["7. Frontend: Overlay OBS & Áudio 🎯"]
+        N1 --> N2 --> N3 --> N4 --> N5 --> N6 --> N7
     end
 
     subgraph NEXT["🟡 NEXT: Operação Real & Refinamento"]
@@ -66,8 +67,8 @@ flowchart LR
 | **3. Persistência & Better Auth** | Camada de dados relacional com Drizzle ORM (PostgreSQL 17), contratos de repositório e autenticação. | Migrações Drizzle aplicadas com sucesso; sessão Better Auth validada no Postgres; 96.23% cobertura. | ✅ Concluída |
 | **4. Ingress & Fila Serial** | Ingestão resiliente, deduplicação por chave de idempotência e execução FIFO concorrência 1 via BullMQ. | 100 eventos processados sem perda ou race condition; snapshots gerados monotonicamente; 97.57% cobertura. | ✅ Concluída |
 | **5. Adaptadores, Socket.IO & Rotas** | Watchdog de heartbeat TikTok, tráfego sintético do simulador e broadcast com coalescência. | Latência <100ms; rajada sintética CA-11 sustentada a 200 ev/s por 60s; 97.80% cobertura backend. | ✅ Concluída |
-| **6. Frontend: Dashboard & Simulador** | Permitir que o operador configure regras, opere a live e injete tráfego sintético. | Login seguro, controles de sessão e injeção de rajadas com 1 clique no painel. | 🎯 Próxima (Em Andamento) |
-| **7. Frontend: Overlay OBS & Áudio** | Projeção visual 1080×1920 a 60 FPS com batching `requestAnimationFrame` e síntese de áudio procedural com limitador de polifonia. | Torres proporcionais no OBS sem travamentos; zero clipping com áudio procedural. | 📋 Na Fila |
+| **6. Frontend: Dashboard & Simulador** | Permitir que o operador configure regras, opere a live e injete tráfego sintético. | Login seguro, controles de sessão e injeção de rajadas com 1 clique no painel. | ✅ Concluída |
+| **7. Frontend: Overlay OBS & Áudio** | Projeção visual 1080×1920 a 60 FPS com batching `requestAnimationFrame` e síntese de áudio procedural com limitador de polifonia. | Torres proporcionais no OBS sem travamentos; zero clipping com áudio procedural. | 🎯 Próxima (Em Andamento) |
 | **8. Homologação E2E Integrada** | Validação ponta a ponta no Docker Compose atendendo a todos os critérios de aceite. | CA-01 a CA-15 satisfeitos com relatório de auditoria completo. | 📋 Na Fila |
 
 ---

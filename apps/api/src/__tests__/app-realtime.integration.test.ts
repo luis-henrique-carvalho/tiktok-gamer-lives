@@ -154,6 +154,9 @@ describe('Realtime End-to-End & Worker Lifecycle (app.ts)', () => {
     // 3. Verify simulator was stopped by the onSessionEnded callback
     expect(simAdapter.isRunning()).toBe(false);
 
+    // Wait for in-flight jobs from continuous simulator to finish before recording sequence
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
     // 4. Record snapshot sequence after end
     const snapBeforeResidual =
       await snapshotRepo.findLatestBySessionId(sessionId);
