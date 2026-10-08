@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Activity, Radio, Sparkles, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -89,9 +89,12 @@ export function IndexPage() {
           <Typography variant="small" className="text-muted-foreground">
             v0.1.0-alpha • Enterprise Mod 2
           </Typography>
-          <Button variant="default" size="sm">
+          <a
+            href="/dashboard"
+            className={buttonVariants({ variant: 'default', size: 'sm' })}
+          >
             Explorar Dashboard
-          </Button>
+          </a>
         </CardFooter>
       </Card>
     </main>

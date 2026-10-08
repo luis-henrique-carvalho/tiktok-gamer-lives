@@ -13,6 +13,8 @@ import {
   startSimulator,
   stopSimulator,
   burstSimulator,
+  sendManualVote,
+  sendManualGift,
   ApiError,
 } from '../client';
 
@@ -98,7 +100,8 @@ describe('API Client', () => {
       '/api/sessions/sess-1/start',
       {
         method: 'POST',
-        headers: {},
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
       },
     );
 
@@ -107,7 +110,8 @@ describe('API Client', () => {
       '/api/sessions/sess-1/pause',
       {
         method: 'POST',
-        headers: {},
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
       },
     );
 
@@ -116,14 +120,16 @@ describe('API Client', () => {
       '/api/sessions/sess-1/resume',
       {
         method: 'POST',
-        headers: {},
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
       },
     );
 
     await endSession('sess-1');
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/sessions/sess-1/end', {
       method: 'POST',
-      headers: {},
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
     });
 
     await getAuditSession('sess-1');
@@ -152,7 +158,8 @@ describe('API Client', () => {
     await disconnectTikTok();
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/tiktok/disconnect', {
       method: 'POST',
-      headers: {},
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
     });
 
     await getTikTokStatus();
@@ -178,7 +185,8 @@ describe('API Client', () => {
     await stopSimulator();
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/simulator/stop', {
       method: 'POST',
-      headers: {},
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
     });
 
     await burstSimulator({
@@ -193,6 +201,44 @@ describe('API Client', () => {
         sessionId: 'sess-1',
         totalEvents: 200,
         eventsPerSecond: 200,
+      }),
+    });
+
+    await sendManualVote({
+      sessionId: 'sess-1',
+      team: 'A',
+      userId: 'u1',
+      userName: 'User 1',
+    });
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/simulator/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'sess-1',
+        team: 'A',
+        userId: 'u1',
+        userName: 'User 1',
+      }),
+    });
+
+    await sendManualGift({
+      sessionId: 'sess-1',
+      team: 'B',
+      units: 5,
+      userId: 'u2',
+      userName: 'User 2',
+      resourceKey: 'rose',
+    });
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/simulator/gift', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'sess-1',
+        team: 'B',
+        units: 5,
+        userId: 'u2',
+        userName: 'User 2',
+        resourceKey: 'rose',
       }),
     });
   });

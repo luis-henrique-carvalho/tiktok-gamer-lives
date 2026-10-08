@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ProcessInteractionUseCase } from '../../application/usecases/process-interaction.usecase.js';
+import type { SnapshotPublisher } from '../../../../common/infrastructure/socket/socketio-snapshot-publisher.js';
 import type {
   CommentInteraction,
   RecognizedGiftContribution,
@@ -20,6 +21,29 @@ export interface BurstOptions extends SimulatorOptions {
   totalEvents?: number;
 }
 
+export interface ManualVoteParams {
+  sessionId?: string;
+  team: 'A' | 'B';
+  userId?: string;
+  userName?: string;
+}
+
+export interface ManualGiftParams {
+  sessionId?: string;
+  team: 'A' | 'B';
+  units?: number;
+  userId?: string;
+  userName?: string;
+  resourceKey?: string;
+}
+
+export interface ManualActionResult<T = GameInteraction> {
+  success: boolean;
+  interaction: T;
+  status?: string;
+  reason?: string;
+}
+
 export class SimulatorCaptureAdapter {
   private continuousTimer: NodeJS.Timeout | null = null;
   private currentSessionId: string | null = null;
@@ -27,6 +51,7 @@ export class SimulatorCaptureAdapter {
 
   constructor(
     private readonly processInteractionUseCase: ProcessInteractionUseCase,
+    private readonly publisher?: SnapshotPublisher,
   ) {}
 
   isRunning(): boolean {
@@ -35,6 +60,118 @@ export class SimulatorCaptureAdapter {
 
   getCurrentSessionId(): string | null {
     return this.currentSessionId;
+  }
+
+  async sendManualVote(
+    params: ManualVoteParams,
+  ): Promise<ManualActionResult<CommentInteraction>> {
+    const targetSessionId = params.sessionId || this.currentSessionId || '';
+    const userId =
+      params.userId && params.userId.trim().length > 0
+        ? params.userId.trim()
+        : `manual_vote_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const userName =
+      params.userName && params.userName.trim().length > 0
+        ? params.userName.trim()
+        : `Simulated Voter (Team ${params.team})`;
+
+    const interaction: CommentInteraction = {
+      id: `sim-manual-vote-${randomUUID()}`,
+      source: 'SIMULATOR',
+      userId,
+      userName,
+      type: 'comment',
+      comment: params.team,
+      timestamp: Date.now(),
+    };
+
+    const execResult = await this.processInteractionUseCase.execute({
+      sessionId: targetSessionId,
+      interaction,
+      idempotencyKey: interaction.id,
+    });
+
+    return {
+      success: true,
+      interaction,
+      status: execResult.status,
+      reason: execResult.reason,
+    };
+  }
+
+  async sendManualGift(
+    params: ManualGiftParams,
+  ): Promise<ManualActionResult<RecognizedGiftContribution>> {
+    const targetSessionId = params.sessionId || this.currentSessionId || '';
+    const userId =
+      params.userId && params.userId.trim().length > 0
+        ? params.userId.trim()
+        : `manual_gift_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const userName =
+      params.userName && params.userName.trim().length > 0
+        ? params.userName.trim()
+        : `Simulated Gifter (Team ${params.team})`;
+    const units = Math.max(1, params.units ?? 1);
+
+    let resourceKey: string;
+    if (params.resourceKey && params.resourceKey.trim().length > 0) {
+      const rawKey = params.resourceKey.trim();
+      if (rawKey === 'rose') {
+        resourceKey = 'tiktok:gift:5655';
+      } else if (rawKey === 'perfume') {
+        resourceKey = 'tiktok:gift:5879';
+      } else {
+        resourceKey = rawKey;
+      }
+    } else {
+      resourceKey =
+        params.team === 'A' ? 'tiktok:gift:5655' : 'tiktok:gift:5879';
+    }
+
+    const interaction: RecognizedGiftContribution = {
+      id: `sim-manual-gift-${randomUUID()}`,
+      source: 'SIMULATOR',
+      userId,
+      userName,
+      type: 'gift_contribution',
+      resourceKey,
+      units,
+      timestamp: Date.now(),
+    };
+
+    if (this.publisher && targetSessionId) {
+      this.publisher.publishAlert(targetSessionId, {
+        id: interaction.id,
+        userId: interaction.userId,
+        userName: interaction.userName,
+        resourceKey: interaction.resourceKey,
+        units: interaction.units,
+        timestamp: interaction.timestamp,
+      });
+    }
+
+    const execResult = await this.processInteractionUseCase.execute({
+      sessionId: targetSessionId,
+      interaction,
+      idempotencyKey: interaction.id,
+    });
+
+    return {
+      success: true,
+      interaction,
+      status: execResult.status,
+      reason: execResult.reason,
+    };
+  }
+
+  async clearPending(sessionId?: string): Promise<{ success: boolean }> {
+    const targetSessionId = sessionId || this.currentSessionId || '';
+    if (!targetSessionId) {
+      return { success: false };
+    }
+    const success =
+      await this.processInteractionUseCase.clearPending(targetSessionId);
+    return { success };
   }
 
   start(sessionId: string, options?: SimulatorOptions): void {
@@ -66,36 +203,59 @@ export class SimulatorCaptureAdapter {
 
     return new Promise<{ totalGenerated: number }>((resolve) => {
       let generated = 0;
-      const timer = setInterval(async () => {
+      const tasks: Promise<void>[] = [];
+
+      const timer = setInterval(() => {
         if (generated >= totalEvents) {
           clearInterval(timer);
-          resolve({ totalGenerated: generated });
+          void Promise.all(tasks).then(() =>
+            resolve({ totalGenerated: generated }),
+          );
           return;
         }
 
         generated++;
-        this.dispatchRandomEvent(sessionId, burstOptions?.distribution);
+        tasks.push(
+          this.dispatchRandomEvent(sessionId, burstOptions?.distribution),
+        );
 
         if (generated >= totalEvents) {
           clearInterval(timer);
-          resolve({ totalGenerated: generated });
+          void Promise.all(tasks).then(() =>
+            resolve({ totalGenerated: generated }),
+          );
         }
       }, intervalMs);
     });
   }
 
-  private dispatchRandomEvent(
+  private async dispatchRandomEvent(
     sessionId: string,
     distribution?: InteractionDistribution,
-  ): void {
+  ): Promise<void> {
     const interaction = this.generateSyntheticInteraction(distribution);
-    this.processInteractionUseCase
-      .execute({
+
+    if (this.publisher && interaction.type === 'gift_contribution') {
+      const gift = interaction as RecognizedGiftContribution;
+      this.publisher.publishAlert(sessionId, {
+        id: gift.id,
+        userId: gift.userId,
+        userName: gift.userName,
+        resourceKey: gift.resourceKey,
+        units: gift.units,
+        timestamp: gift.timestamp,
+      });
+    }
+
+    try {
+      await this.processInteractionUseCase.execute({
         sessionId,
         interaction,
         idempotencyKey: interaction.id,
-      })
-      .catch(() => {});
+      });
+    } catch {
+      // Best-effort synthetic ingestion
+    }
   }
 
   private generateSyntheticInteraction(

@@ -4,6 +4,9 @@ import {
   simulatorStartDocs,
   simulatorStopDocs,
   simulatorBurstDocs,
+  simulatorVoteDocs,
+  simulatorGiftDocs,
+  simulatorClearPendingDocs,
 } from './docs/simulator.docs.js';
 
 export function simulatorRoutes(
@@ -33,6 +36,33 @@ export function simulatorRoutes(
       { schema: simulatorBurstDocs },
       async (req, reply) => {
         const result = await controller.burst(req.body);
+        return reply.send(result);
+      },
+    );
+
+    app.post(
+      '/api/simulator/vote',
+      { schema: simulatorVoteDocs },
+      async (req, reply) => {
+        const result = await controller.vote(req.body);
+        return reply.send(result);
+      },
+    );
+
+    app.post(
+      '/api/simulator/gift',
+      { schema: simulatorGiftDocs },
+      async (req, reply) => {
+        const result = await controller.gift(req.body);
+        return reply.send(result);
+      },
+    );
+
+    app.post(
+      '/api/simulator/clear-pending',
+      { schema: simulatorClearPendingDocs },
+      async (req, reply) => {
+        const result = await controller.clearPending(req.body);
         return reply.send(result);
       },
     );

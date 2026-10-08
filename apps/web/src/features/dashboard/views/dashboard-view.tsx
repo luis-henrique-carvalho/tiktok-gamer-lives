@@ -1,18 +1,8 @@
 import { useEffect } from 'react';
-import {
-  Radio,
-  ExternalLink,
-  LogOut,
-  Swords,
-  Trophy,
-  Wifi,
-  WifiOff,
-} from 'lucide-react';
+import { Radio, ExternalLink, LogOut, Wifi, WifiOff } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Typography } from '@/components/ui/typography';
-import { Progress } from '@/components/ui/progress';
-import { Card, CardContent } from '@/components/ui/card';
 import { authClient } from '@/lib/auth-client';
 import { realtimeClient } from '@/lib/socket-client';
 import { useDashboardStore } from '../stores/use-dashboard-store';
@@ -22,14 +12,61 @@ import { TikTokConnectorCard } from '../components/tiktok-connector-card';
 import { SimulatorPanel } from '../components/simulator-panel';
 import { MetricsCard } from '../components/metrics-card';
 import { EventsHistoryLog } from '../components/events-history-log';
-import type { AxBProjection } from '@/api/types';
+import { MatchScoreboardCard } from '../components/match-scoreboard-card';
+import { getSession } from '@/api/client';
+import type { GameSession, GameSnapshot, AxBProjection } from '@/api/types';
 
 interface DashboardViewProps {
   readonly onSignOut?: () => void;
 }
 
+function computeDisplayProjection(
+  snapshot: GameSnapshot | null,
+  session: GameSession | null,
+): AxBProjection | null {
+  if (snapshot?.projection) {
+    return snapshot.projection as AxBProjection;
+  }
+  if (!session) {
+    return null;
+  }
+
+  const sessionConfig = session.config as Record<string, unknown> | undefined;
+  const isRunning = session.status === 'RUNNING';
+  const isPaused = session.status === 'PAUSED';
+
+  return {
+    round: 1,
+    roundStatus: isRunning ? 'ACTIVE' : isPaused ? 'INTERVAL' : 'ACTIVE',
+    scoreGoal: (sessionConfig?.scoreGoal as number) ?? 1000,
+    teamA: {
+      id: 'A',
+      name: (sessionConfig?.teamA as { name?: string })?.name ?? 'Time A',
+      color: (sessionConfig?.teamA as { color?: string })?.color ?? '#EF4444',
+      score: 0,
+      wins: 0,
+      progressPercentage: 0,
+      relativePercentage: 50,
+    },
+    teamB: {
+      id: 'B',
+      name: (sessionConfig?.teamB as { name?: string })?.name ?? 'Time B',
+      color: (sessionConfig?.teamB as { color?: string })?.color ?? '#3B82F6',
+      score: 0,
+      wins: 0,
+      progressPercentage: 0,
+      relativePercentage: 50,
+    },
+    history: [],
+    isPaused,
+    pendingCount: 0,
+    lastWinner: null,
+  };
+}
+
 export function DashboardView({ onSignOut }: DashboardViewProps) {
   const session = useDashboardStore((s) => s.session);
+  const setSession = useDashboardStore((s) => s.setSession);
   const snapshot = useDashboardStore((s) => s.snapshot);
   const isConnected = useDashboardStore((s) => s.isConnected);
   const updateSnapshot = useDashboardStore((s) => s.updateSnapshot);
@@ -37,6 +74,7 @@ export function DashboardView({ onSignOut }: DashboardViewProps) {
   const setConnected = useDashboardStore((s) => s.setConnected);
   const setTikTokStatus = useDashboardStore((s) => s.setTikTokStatus);
   const addLogEvent = useDashboardStore((s) => s.addLogEvent);
+  const updateMetrics = useDashboardStore((s) => s.updateMetrics);
 
   useEffect(() => {
     realtimeClient.connect();
@@ -95,15 +133,53 @@ export function DashboardView({ onSignOut }: DashboardViewProps) {
   useEffect(() => {
     if (session?.id) {
       realtimeClient.joinSession(session.id);
+    } else if (typeof window !== 'undefined' && window.localStorage) {
+      const savedId = window.localStorage.getItem('active_session_id');
+      if (savedId) {
+        getSession(savedId)
+          .then((restored) => {
+            if (restored && restored.status !== 'ENDED') {
+              setSession(restored);
+            } else {
+              window.localStorage.removeItem('active_session_id');
+            }
+          })
+          .catch(() => {
+            window.localStorage.removeItem('active_session_id');
+          });
+      }
     }
-  }, [session?.id]);
+  }, [session?.id, setSession]);
+
+  useEffect(() => {
+    let lastEvents = useDashboardStore.getState().metrics.eventsCount;
+    let lastSequence = useDashboardStore.getState().metrics.sequence;
+
+    const interval = setInterval(() => {
+      const currentEvents = useDashboardStore.getState().metrics.eventsCount;
+      const currentSequence = useDashboardStore.getState().metrics.sequence;
+
+      const eventsPerSec = Math.max(0, currentEvents - lastEvents);
+      const snapshotsPerSec = Math.max(0, currentSequence - lastSequence);
+
+      lastEvents = currentEvents;
+      lastSequence = currentSequence;
+
+      updateMetrics({
+        eventsPerSecond: eventsPerSec,
+        snapshotsPerSecond: snapshotsPerSec,
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [updateMetrics]);
 
   const handleSignOut = async () => {
     await authClient.signOut();
     onSignOut?.();
   };
 
-  const projection = snapshot?.projection as AxBProjection | undefined;
+  const displayProjection = computeDisplayProjection(snapshot, session);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -162,57 +238,11 @@ export function DashboardView({ onSignOut }: DashboardViewProps) {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
-        {/* Live Scoreboard Summary (if active) */}
-        {projection && (
-          <Card className="border-primary/20 bg-muted/20">
-            <CardContent className="p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Swords className="size-4 text-primary" />
-                  <Typography variant="small" className="font-semibold">
-                    Rodada #{projection.round} — Placar em Tempo Real
-                  </Typography>
-                </div>
-                <Badge variant="outline" className="gap-1">
-                  <Trophy className="size-3 text-amber-500" />
-                  Meta: {projection.scoreGoal} pts
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center text-xs font-semibold">
-                    <span style={{ color: projection.teamA.color }}>
-                      {projection.teamA.name} ({projection.teamA.wins}V)
-                    </span>
-                    <span className="font-mono">
-                      {projection.teamA.score} pts
-                    </span>
-                  </div>
-                  <Progress
-                    value={projection.teamA.progressPercentage}
-                    className="h-2.5 bg-muted"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center text-xs font-semibold">
-                    <span style={{ color: projection.teamB.color }}>
-                      {projection.teamB.name} ({projection.teamB.wins}V)
-                    </span>
-                    <span className="font-mono">
-                      {projection.teamB.score} pts
-                    </span>
-                  </div>
-                  <Progress
-                    value={projection.teamB.progressPercentage}
-                    className="h-2.5 bg-muted"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Live Scoreboard Summary */}
+        <MatchScoreboardCard
+          projection={displayProjection}
+          sessionStatus={session?.status}
+        />
 
         {/* 2-Column Responsive Operator Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

@@ -12,7 +12,6 @@ import {
   createQueue,
   createWorker,
 } from '../common/infrastructure/queue/queue.factory.js';
-import { QUEUE_NAMES } from '../common/infrastructure/queue/queue.constants.js';
 import { DrizzleSessionRepository } from '../modules/sessions/infrastructure/database/drizzle/drizzle-session.repository.js';
 import { DrizzleSnapshotRepository } from '../modules/sessions/infrastructure/database/drizzle/drizzle-snapshot.repository.js';
 import { DrizzleInteractionRepository } from '../modules/sessions/infrastructure/database/drizzle/drizzle-interaction.repository.js';
@@ -60,7 +59,8 @@ describe('CA-11 Burst Traffic & Socket.IO Coalescing Integration Test', () => {
     gameRegistry = new GameRegistry();
     gameRegistry.registerGame(axbGameModule);
 
-    commandQueue = createQueue(QUEUE_NAMES.GAME_COMMANDS, redis);
+    const burstQueueName = `game-commands-burst-${randomUUID()}`;
+    commandQueue = createQueue(burstQueueName, redis);
 
     processInteractionUseCase = new ProcessInteractionUseCase(
       redis,
@@ -91,7 +91,7 @@ describe('CA-11 Burst Traffic & Socket.IO Coalescing Integration Test', () => {
       ProcessGameCommandInput,
       ProcessGameCommandResult
     >(
-      QUEUE_NAMES.GAME_COMMANDS,
+      burstQueueName,
       async (job) => {
         const res = await processor(job);
         publisher.publishSnapshot(job.data.sessionId, res.snapshot);
@@ -128,6 +128,7 @@ describe('CA-11 Burst Traffic & Socket.IO Coalescing Integration Test', () => {
     simulatorAdapter.stop();
     publisher.close();
     await commandWorker.close();
+    await commandQueue.obliterate({ force: true });
     await commandQueue.close();
     await closeRedisConnection();
   });
@@ -146,12 +147,12 @@ describe('CA-11 Burst Traffic & Socket.IO Coalescing Integration Test', () => {
     // Wait for BullMQ queue to drain completely
     await vi.waitFor(
       async () => {
-        const waiting = await commandQueue.getWaitingCount();
+        const counts = await commandQueue.getJobCounts();
         const latest = await snapshotRepo.findLatestBySessionId(sessionId);
-        expect(waiting).toBe(0);
+        expect(counts.waiting + counts.active).toBe(0);
         expect(latest?.sequence).toBe(burstCount);
       },
-      { timeout: 15000, interval: 200 },
+      { timeout: 15000, interval: 100 },
     );
 
     const latestSnapshot = await snapshotRepo.findLatestBySessionId(sessionId);
@@ -173,5 +174,5 @@ describe('CA-11 Burst Traffic & Socket.IO Coalescing Integration Test', () => {
         sequence: burstCount,
       }),
     );
-  });
+  }, 25000);
 });

@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ProcessGameCommandUseCase } from '../process-game-command.usecase.js';
 import type { SessionRepository } from '../../../../../modules/sessions/application/repositories/session.repository.js';
 import type { SnapshotRepository } from '../../../../../modules/sessions/application/repositories/snapshot.repository.js';
-import type {
-  GameSnapshot,
+import {
   SessionStatus,
-  GameSession,
+  type GameSnapshot,
+  type GameSession,
 } from '../../../../../modules/sessions/domain/session.types.js';
 import { GameRegistry } from '../../../../registry/game-registry.js';
 import {
@@ -95,8 +95,8 @@ describe('ProcessGameCommandUseCase', () => {
       },
     });
 
-    expect(result.snapshot.sequence).toBe(1);
-    expect((result.snapshot.state as AxBState).score.teamA).toBe(1);
+    expect(result.snapshot?.sequence).toBe(1);
+    expect((result.snapshot?.state as AxBState).score.teamA).toBe(1);
     expect((result.projection as AxBProjection).teamA.score).toBe(1);
     expect(snapshotRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -113,7 +113,7 @@ describe('ProcessGameCommandUseCase', () => {
       gameId: 'axb',
       command: { type: 'VOTE', team: 'A', userId: 'user-1', timestamp: 1000 },
     });
-    expect(res1.snapshot.sequence).toBe(1);
+    expect(res1.snapshot?.sequence).toBe(1);
 
     // Command 2
     const res2 = await usecase.execute({
@@ -121,7 +121,7 @@ describe('ProcessGameCommandUseCase', () => {
       gameId: 'axb',
       command: { type: 'VOTE', team: 'B', userId: 'user-2', timestamp: 2000 },
     });
-    expect(res2.snapshot.sequence).toBe(2);
+    expect(res2.snapshot?.sequence).toBe(2);
 
     // Command 3
     const res3 = await usecase.execute({
@@ -129,9 +129,9 @@ describe('ProcessGameCommandUseCase', () => {
       gameId: 'axb',
       command: { type: 'VOTE', team: 'A', userId: 'user-3', timestamp: 3000 },
     });
-    expect(res3.snapshot.sequence).toBe(3);
-    expect((res3.snapshot.state as AxBState).score.teamA).toBe(2);
-    expect((res3.snapshot.state as AxBState).score.teamB).toBe(1);
+    expect(res3.snapshot?.sequence).toBe(3);
+    expect((res3.snapshot?.state as AxBState).score.teamA).toBe(2);
+    expect((res3.snapshot?.state as AxBState).score.teamB).toBe(1);
   });
 
   it('should schedule timers when decision contains timerRequests (e.g. victory condition)', async () => {
@@ -155,8 +155,8 @@ describe('ProcessGameCommandUseCase', () => {
       },
     });
 
-    expect(result.decision.roundEnded).toBe(true);
-    expect(result.decision.timerRequests?.length).toBeGreaterThan(0);
+    expect(result.decision?.roundEnded).toBe(true);
+    expect(result.decision?.timerRequests?.length).toBeGreaterThan(0);
     expect(timerService.scheduleTimer).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: mockSession.id,
@@ -166,6 +166,34 @@ describe('ProcessGameCommandUseCase', () => {
         }),
       }),
     );
+  });
+
+  it('should ignore command and return SESSION_ENDED when session is ENDED', async () => {
+    const endedSession: GameSession = {
+      ...mockSession,
+      status: SessionStatus.ENDED,
+      endedAt: new Date(),
+    };
+    vi.mocked(sessionRepo.findById).mockResolvedValueOnce(endedSession);
+
+    const game = gameRegistry.getGame('axb');
+    const applyCommandSpy = vi.spyOn(game.engine, 'applyCommand');
+
+    const result = await usecase.execute({
+      sessionId: mockSession.id,
+      gameId: 'axb',
+      command: { type: 'VOTE', team: 'A', userId: 'user-1' },
+    });
+
+    expect(result).toEqual({
+      ignored: true,
+      reason: 'SESSION_ENDED',
+    });
+    expect(applyCommandSpy).not.toHaveBeenCalled();
+    expect(snapshotRepo.save).not.toHaveBeenCalled();
+    expect(timerService.scheduleTimer).not.toHaveBeenCalled();
+
+    applyCommandSpy.mockRestore();
   });
 
   it('should throw NotFoundError if session does not exist', async () => {

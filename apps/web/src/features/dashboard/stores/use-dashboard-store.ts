@@ -115,7 +115,16 @@ function handleAddLog(
 
 export const useDashboardStore = create<DashboardState>((set) => ({
   ...initialState,
-  setSession: (session) => set({ session }),
+  setSession: (session) => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (session?.id) {
+        window.localStorage.setItem('active_session_id', session.id);
+      } else {
+        window.localStorage.removeItem('active_session_id');
+      }
+    }
+    set({ session });
+  },
   updateSnapshot: (snapshot) =>
     set((state) => ({
       snapshot,

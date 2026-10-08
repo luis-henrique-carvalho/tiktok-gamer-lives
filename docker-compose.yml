@@ -63,7 +63,7 @@ services:
     container_name: tiktok-gamer-lives-web
     restart: unless-stopped
     ports:
-      - "${WEB_PORT:-5180}:5176"
+      - "${WEB_PORT:-5180}:5180"
     environment:
       VITE_BACKEND_PROXY_TARGET: "http://api:3001"
     volumes:

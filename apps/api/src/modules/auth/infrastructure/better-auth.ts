@@ -22,6 +22,7 @@ export const auth = betterAuth({
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:3010',
+    'https://lives.luis-carvalho.online',
     ...(env.CORS_ORIGIN && env.CORS_ORIGIN !== '*'
       ? env.CORS_ORIGIN.split(',').map((o) => o.trim())
       : []),

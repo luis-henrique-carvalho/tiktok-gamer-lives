@@ -1,12 +1,21 @@
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
+  type FastifyBaseLogger,
 } from 'fastify';
 import cors, { type FastifyCorsOptions } from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { Server as SocketIOServer } from 'socket.io';
-import type { Queue } from 'bullmq';
+import type { Queue, Worker } from 'bullmq';
+import { createWorker } from './common/infrastructure/queue/queue.factory.js';
+import { commandProcessor } from './common/executor/infrastructure/queue/command.worker.js';
+import {
+  ProcessGameCommandUseCase,
+  type ProcessGameCommandInput,
+  type ProcessGameCommandResult,
+} from './common/executor/application/usecases/process-game-command.usecase.js';
+import { DeclarativeTimerService } from './common/timers/declarative-timer.service.js';
 import { errorHandler } from './common/infrastructure/http/error-handler.js';
 import { healthRoutes } from './common/infrastructure/http/routes/health.routes.js';
 import { authRoutes } from './modules/auth/infrastructure/http/routes/auth.routes.js';
@@ -51,6 +60,8 @@ export interface AppOptions extends FastifyServerOptions {
   tiktokAdapter?: TikTokLiveCaptureAdapter;
   publisher?: SnapshotPublisher;
   io?: SocketIOServer;
+  commandWorker?: Worker | null;
+  startWorker?: boolean;
 }
 
 interface AppComponents {
@@ -61,12 +72,14 @@ interface AppComponents {
   tiktokAdapter: TikTokLiveCaptureAdapter;
   publisher: SnapshotPublisher;
   io: SocketIOServer;
+  commandWorker?: Worker | null;
 }
 
-function createComponents(
+function setupSocketIO(
   app: FastifyInstance,
   options: AppOptions,
-): AppComponents {
+  snapshotRepo: DrizzleSnapshotRepository,
+): { io: SocketIOServer; publisher: SnapshotPublisher } {
   const socketCorsOrigin =
     typeof options.corsOrigin === 'string' ||
     Array.isArray(options.corsOrigin) ||
@@ -83,15 +96,46 @@ function createComponents(
   const publisher =
     options.publisher ?? new SocketIOSnapshotPublisher(io, { throttleMs: 50 });
 
-  const gameRegistry = new GameRegistry();
-  gameRegistry.registerGame(axbGameModule);
+  io.on('connection', (socket) => {
+    socket.on('join', async (room: unknown) => {
+      if (typeof room === 'string' && room.trim().length > 0) {
+        await socket.join(room);
+        if (room.startsWith('session:')) {
+          const sessionId = room.slice('session:'.length);
+          const latest = await snapshotRepo.findLatestBySessionId(sessionId);
+          if (latest) {
+            socket.emit('snapshot', latest);
+          }
+        }
+      }
+    });
 
-  const sessionRepo = new DrizzleSessionRepository(db);
-  const snapshotRepo = new DrizzleSnapshotRepository(db);
-  const interactionRepo = new DrizzleInteractionRepository(db);
+    socket.on('leave', async (room: unknown) => {
+      if (typeof room === 'string') {
+        await socket.leave(room);
+      }
+    });
+  });
 
+  return { io, publisher };
+}
+
+function setupCommandQueueAndWorker(
+  options: AppOptions,
+  sessionRepo: DrizzleSessionRepository,
+  snapshotRepo: DrizzleSnapshotRepository,
+  interactionRepo: DrizzleInteractionRepository,
+  gameRegistry: GameRegistry,
+  publisher: SnapshotPublisher,
+  logger?: FastifyBaseLogger,
+): {
+  commandQueue: Queue | null;
+  processUseCase: ProcessInteractionUseCase | null;
+  commandWorker: Worker | null;
+} {
   let commandQueue: Queue | null = null;
   let processUseCase: ProcessInteractionUseCase | null = null;
+  let commandWorker: Worker | null = options.commandWorker ?? null;
 
   try {
     const redis = getRedisConnection();
@@ -103,9 +147,90 @@ function createComponents(
       gameRegistry,
       commandQueue,
     );
+
+    const shouldStartWorker =
+      options.startWorker ?? process.env.NODE_ENV !== 'test';
+    if (shouldStartWorker && options.commandWorker === undefined && redis) {
+      const timerService = commandQueue
+        ? new DeclarativeTimerService(commandQueue)
+        : undefined;
+
+      const processGameCommandUseCase = new ProcessGameCommandUseCase(
+        sessionRepo,
+        snapshotRepo,
+        gameRegistry,
+        timerService,
+      );
+
+      const processor = commandProcessor(processGameCommandUseCase);
+      commandWorker = createWorker<
+        ProcessGameCommandInput,
+        ProcessGameCommandResult
+      >(
+        QUEUE_NAMES.GAME_COMMANDS,
+        async (job) => {
+          const cmdType =
+            (job.data.command as { type?: string })?.type ?? 'UNKNOWN';
+          const res = await processor(job);
+          if (logger) {
+            const decisionStatus =
+              res?.decision?.status ?? (res?.ignored ? 'IGNORED' : 'UNKNOWN');
+            const decisionReason = res?.decision?.reason ?? res?.reason ?? '';
+            const proj = res?.projection as
+              | {
+                  round?: number;
+                  roundStatus?: string;
+                  teamA?: { score: number };
+                  teamB?: { score: number };
+                }
+              | undefined;
+            logger.info(
+              `[CommandWorker] ${cmdType} on session ${job.data.sessionId}: status=${decisionStatus}${decisionReason ? ` (${decisionReason})` : ''} | Round ${proj?.round ?? '-'} [${proj?.roundStatus ?? '-'}] | Placar: ${proj?.teamA?.score ?? 0} x ${proj?.teamB?.score ?? 0}`,
+            );
+          }
+          if (res?.snapshot) {
+            publisher.publishSnapshot(job.data.sessionId, res.snapshot);
+          }
+          return res;
+        },
+        { concurrency: 1, connection: redis },
+      );
+    }
   } catch {
     // Redis might be unavailable in offline unit tests
   }
+
+  return { commandQueue, processUseCase, commandWorker };
+}
+
+function createComponents(
+  app: FastifyInstance,
+  options: AppOptions,
+): AppComponents {
+  const gameRegistry = new GameRegistry();
+  gameRegistry.registerGame(axbGameModule);
+
+  const sessionRepo = new DrizzleSessionRepository(db);
+  const snapshotRepo = new DrizzleSnapshotRepository(db);
+  const interactionRepo = new DrizzleInteractionRepository(db);
+
+  const { io, publisher } = setupSocketIO(app, options, snapshotRepo);
+  const { commandQueue, processUseCase, commandWorker } =
+    setupCommandQueueAndWorker(
+      options,
+      sessionRepo,
+      snapshotRepo,
+      interactionRepo,
+      gameRegistry,
+      publisher,
+      app.log,
+    );
+
+  const simAdapter =
+    options.simulatorAdapter ??
+    (processUseCase
+      ? new SimulatorCaptureAdapter(processUseCase, publisher)
+      : ({ stop: () => {} } as unknown as SimulatorCaptureAdapter));
 
   const sessionCtrl =
     options.sessionController ??
@@ -122,14 +247,10 @@ function createComponents(
         gameRegistry,
         (commandQueue ?? {}) as unknown as Queue,
       ),
-      new EndSessionUseCase(sessionRepo),
+      new EndSessionUseCase(sessionRepo, (_sessionId: string) => {
+        simAdapter.stop();
+      }),
     );
-
-  const simAdapter =
-    options.simulatorAdapter ??
-    (processUseCase
-      ? new SimulatorCaptureAdapter(processUseCase)
-      : ({} as SimulatorCaptureAdapter));
 
   const ttAdapter =
     options.tiktokAdapter ??
@@ -147,7 +268,55 @@ function createComponents(
     tiktokAdapter: ttAdapter,
     publisher,
     io,
+    commandWorker,
   };
+}
+
+function resolveCorsOrigin(
+  corsOrigin: FastifyCorsOptions['origin'],
+): FastifyCorsOptions['origin'] {
+  if (corsOrigin === '*' || corsOrigin === true) {
+    return true;
+  }
+  if (typeof corsOrigin === 'string' && corsOrigin.includes(',')) {
+    return corsOrigin.split(',').map((s) => s.trim());
+  }
+  return corsOrigin;
+}
+
+async function registerCors(
+  app: FastifyInstance,
+  corsOrigin: FastifyCorsOptions['origin'],
+): Promise<void> {
+  await app.register(cors, {
+    origin: resolveCorsOrigin(corsOrigin),
+    credentials: true,
+  });
+}
+
+function setupJsonParser(app: FastifyInstance): void {
+  app.addContentTypeParser(
+    ['application/json', 'text/plain', 'application/x-www-form-urlencoded'],
+    { parseAs: 'string' },
+    (_req, body, done) => {
+      const text = typeof body === 'string' ? body.trim() : '';
+      if (text === '') {
+        done(null, undefined);
+        return;
+      }
+      try {
+        done(null, JSON.parse(text));
+      } catch (err) {
+        if (_req.headers['content-type']?.includes('application/json')) {
+          const parseError = err as Error & { statusCode?: number };
+          parseError.statusCode = 400;
+          done(parseError, undefined);
+          return;
+        }
+        done(null, undefined);
+      }
+    },
+  );
 }
 
 export async function buildApp(
@@ -161,26 +330,18 @@ export async function buildApp(
     return reply.status(404).send({ status: 404, message: 'Route not found' });
   });
 
-  app.addContentTypeParser(
-    'application/json',
-    { parseAs: 'string' },
-    (_req, body, done) => {
-      const text = typeof body === 'string' ? body.trim() : '';
-      if (text === '') {
-        done(null, undefined);
-        return;
-      }
-      try {
-        done(null, JSON.parse(text));
-      } catch (err) {
-        const parseError = err as Error & { statusCode?: number };
-        parseError.statusCode = 400;
-        done(parseError, undefined);
-      }
-    },
-  );
-
-  await app.register(cors, { origin: corsOrigin });
+  setupJsonParser(app);
+  app.addHook('onRequest', async (req) => {
+    if (
+      (req.method === 'POST' ||
+        req.method === 'PUT' ||
+        req.method === 'PATCH') &&
+      !req.headers['content-type']
+    ) {
+      req.headers['content-type'] = 'application/json';
+    }
+  });
+  await registerCors(app, corsOrigin);
   await app.register(swagger, {
     openapi: {
       info: {
@@ -208,6 +369,9 @@ export async function buildApp(
 
   app.addHook('onClose', async () => {
     comp.publisher.close();
+    if (comp.commandWorker) {
+      await comp.commandWorker.close();
+    }
     if (!options.io) {
       await new Promise<void>((resolve) => {
         comp.io.close(() => resolve());

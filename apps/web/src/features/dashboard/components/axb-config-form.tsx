@@ -17,6 +17,13 @@ import { createSession } from '@/api/client';
 import { realtimeClient } from '@/lib/socket-client';
 import type { AxBConfig, AxBGiftRule } from '@/api/types';
 
+const DEFAULT_GIFT_RULES: readonly AxBGiftRule[] = [
+  { resourceKey: 'tiktok:gift:5655', targetTeam: 'A', pointsPerUnit: 10 },
+  { resourceKey: 'tiktok:gift:5879', targetTeam: 'B', pointsPerUnit: 10 },
+  { resourceKey: 'tiktok:gift:5827', targetTeam: 'A', pointsPerUnit: 50 },
+  { resourceKey: 'tiktok:gift:6064', targetTeam: 'B', pointsPerUnit: 50 },
+];
+
 export function AxBConfigForm() {
   const setSession = useDashboardStore((s) => s.setSession);
   const addLogEvent = useDashboardStore((s) => s.addLogEvent);
@@ -29,13 +36,6 @@ export function AxBConfigForm() {
   const [teamBColor, setTeamBColor] = useState('#3b82f6');
   const [scoreGoal, setScoreGoal] = useState('1000');
 
-  const defaultGiftRules: readonly AxBGiftRule[] = [
-    { resourceKey: 'rose', targetTeam: 'A', pointsPerUnit: 1 },
-    { resourceKey: 'heart', targetTeam: 'B', pointsPerUnit: 1 },
-    { resourceKey: 'gg', targetTeam: 'A', pointsPerUnit: 10 },
-    { resourceKey: 'fire', targetTeam: 'B', pointsPerUnit: 10 },
-  ];
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -46,7 +46,7 @@ export function AxBConfigForm() {
       scoreGoal: Number(scoreGoal) || 1000,
       commentCooldownMs: 1000,
       intervalDurationMs: 5000,
-      giftRules: defaultGiftRules,
+      giftRules: DEFAULT_GIFT_RULES,
     };
 
     try {

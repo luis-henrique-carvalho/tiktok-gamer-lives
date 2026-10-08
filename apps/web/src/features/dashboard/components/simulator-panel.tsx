@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Zap, Play, Square, Flame, Loader2, Activity } from 'lucide-react';
+import { Zap, Activity } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -8,87 +8,161 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Typography } from '@/components/ui/typography';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { useDashboardStore } from '../stores/use-dashboard-store';
-import { startSimulator, stopSimulator, burstSimulator } from '@/api/client';
+import {
+  sendManualVote,
+  sendManualGift,
+  clearPendingContributions,
+} from '@/api/client';
+import { useSimulatorTraffic } from '../hooks/use-simulator-traffic';
+import { ManualActionsSection } from './manual-actions-section';
+import { BurstTrafficSection } from './burst-traffic-section';
+import { ContinuousTrafficSection } from './continuous-traffic-section';
 
 export function SimulatorPanel() {
   const session = useDashboardStore((s) => s.session);
+  const snapshot = useDashboardStore((s) => s.snapshot);
   const addLogEvent = useDashboardStore((s) => s.addLogEvent);
 
-  const [eventsPerSec, setEventsPerSec] = useState('20');
-  const [isRunningContinuous, setIsRunningContinuous] = useState(false);
-  const [loadingBurst, setLoadingBurst] = useState(false);
-  const [loadingTraffic, setLoadingTraffic] = useState(false);
+  const {
+    eventsPerSec,
+    setEventsPerSec,
+    isRunningContinuous,
+    loadingBurst,
+    loadingTraffic,
+    handleBurst,
+    handleToggleContinuous,
+  } = useSimulatorTraffic(session, addLogEvent);
 
-  const handleBurst = async () => {
-    if (!session?.id) {
+  const [loadingClearPending, setLoadingClearPending] = useState(false);
+  const [manualUser, setManualUser] = useState('');
+  const [giftUnits, setGiftUnits] = useState('1');
+  const [loadingAction, setLoadingAction] = useState<
+    'voteA' | 'voteB' | 'giftA' | 'giftB' | null
+  >(null);
+
+  const isSessionRunning = session?.status === 'RUNNING';
+  const isSimulationDisabled = !isSessionRunning;
+  const roundStatus = (snapshot?.projection as { roundStatus?: string })
+    ?.roundStatus;
+  const pendingCount =
+    (snapshot?.projection as { pendingCount?: number })?.pendingCount ?? 0;
+  const isInterval = roundStatus === 'INTERVAL';
+
+  const handleManualVote = async (team: 'A' | 'B') => {
+    if (!session?.id || session.status !== 'RUNNING') {
       toast.error('Selecione ou crie uma sessão ativa primeiro');
       return;
     }
-
-    setLoadingBurst(true);
+    setLoadingAction(team === 'A' ? 'voteA' : 'voteB');
+    const trimmedUser = manualUser.trim();
     try {
-      const res = await burstSimulator({
+      const res = await sendManualVote({
         sessionId: session.id,
-        totalEvents: 200,
-        eventsPerSecond: 200,
+        team,
+        ...(trimmedUser ? { userId: trimmedUser, userName: trimmedUser } : {}),
       });
       addLogEvent({
-        type: 'system',
-        text: `Rajada CA-11 disparada: ${res.totalGenerated} eventos gerados.`,
+        type: 'comment',
+        text: `Voto manual injetado no Time ${team} (+1 pt)${trimmedUser ? ` [${trimmedUser}]` : ''}`,
       });
-      toast.success(`Rajada de ${res.totalGenerated} eventos disparada!`);
+      if (res.status === 'IGNORED') {
+        const reasonMsg =
+          res.reason === 'ROUND_NOT_ACTIVE'
+            ? 'A rodada está em intervalo. Aguarde o início da próxima rodada.'
+            : res.reason === 'COOLDOWN_ACTIVE'
+              ? 'Usuário em cooldown de 5s.'
+              : res.reason || 'Comando ignorado.';
+        toast.warning(`Voto ignorado: ${reasonMsg}`);
+      } else {
+        toast.success(
+          res.message || `Voto registrado para o Time ${team} (+1 pt)`,
+        );
+      }
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'Falha ao disparar rajada';
-      toast.error(msg);
+      toast.error(
+        err instanceof Error ? err.message : 'Falha ao registrar voto',
+      );
     } finally {
-      setLoadingBurst(false);
+      setLoadingAction(null);
     }
   };
 
-  const handleToggleContinuous = async () => {
-    if (!session?.id) {
+  const handleManualGift = async (team: 'A' | 'B') => {
+    if (!session?.id || session.status !== 'RUNNING') {
       toast.error('Selecione ou crie uma sessão ativa primeiro');
       return;
     }
-
-    setLoadingTraffic(true);
+    setLoadingAction(team === 'A' ? 'giftA' : 'giftB');
+    const trimmedUser = manualUser.trim();
+    const units = Math.max(1, Number(giftUnits) || 1);
+    const points = units * 10;
     try {
-      if (isRunningContinuous) {
-        await stopSimulator();
-        setIsRunningContinuous(false);
-        addLogEvent({
-          type: 'system',
-          text: 'Tráfego contínuo pausado pelo operador.',
-        });
-        toast.success('Tráfego contínuo pausado');
+      const res = await sendManualGift({
+        sessionId: session.id,
+        team,
+        units,
+        ...(trimmedUser ? { userId: trimmedUser, userName: trimmedUser } : {}),
+      });
+      addLogEvent({
+        type: 'gift',
+        text: `Presente manual (${units}x) injetado no Time ${team} (+${points} pts)${trimmedUser ? ` [${trimmedUser}]` : ''}`,
+      });
+      if (res.status === 'IGNORED') {
+        toast.warning(`Presente ignorado: ${res.reason || 'Não processado'}`);
+      } else if (
+        res.status === 'BUFFERED' ||
+        res.reason === 'SESSION_PAUSED' ||
+        res.reason === 'ROUND_NOT_ACTIVE'
+      ) {
+        toast.info(
+          `Presente em espera: computado ao iniciar a rodada (+${points} pts)`,
+        );
       } else {
-        const rate = Math.max(1, Number(eventsPerSec) || 20);
-        await startSimulator({
-          sessionId: session.id,
-          eventsPerSecond: rate,
-        });
-        setIsRunningContinuous(true);
-        addLogEvent({
-          type: 'system',
-          text: `Tráfego contínuo iniciado com taxa de ${rate} ev/s.`,
-        });
-        toast.success(`Tráfego contínuo iniciado (${rate} ev/s)`);
+        toast.success(
+          res.message ||
+            `Presente registrado para o Time ${team} (+${points} pts)`,
+        );
       }
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'Falha ao controlar tráfego';
-      toast.error(msg);
+      toast.error(
+        err instanceof Error ? err.message : 'Falha ao registrar presente',
+      );
     } finally {
-      setLoadingTraffic(false);
+      setLoadingAction(null);
     }
   };
+
+  const handleClearPending = async () => {
+    if (!session?.id) return;
+    setLoadingClearPending(true);
+    try {
+      await clearPendingContributions(session.id);
+      addLogEvent({
+        type: 'system',
+        text: 'Fila de presentes pendentes limpa com sucesso.',
+      });
+      toast.success('Fila de presentes pendentes limpa!');
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Falha ao limpar fila de pendências',
+      );
+    } finally {
+      setLoadingClearPending(false);
+    }
+  };
+
+  const isAnyLoading =
+    isSimulationDisabled ||
+    loadingBurst ||
+    loadingTraffic ||
+    loadingClearPending ||
+    loadingAction !== null;
 
   return (
     <Card>
@@ -110,83 +184,40 @@ export function SimulatorPanel() {
         </div>
         <CardDescription>
           <Typography variant="muted" className="text-xs">
-            Injeção de eventos sintéticos e disparador de estresse CA-11 (200
-            ev/s).
+            Injeção de eventos sintéticos, disparador de estresse CA-11 e ações
+            manuais de teste.
           </Typography>
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
-          <div className="flex items-center justify-between">
-            <Typography
-              variant="small"
-              className="font-semibold text-amber-600 dark:text-amber-400"
-            >
-              Estresse CA-11 (200 ev/s)
-            </Typography>
-            <Badge variant="outline" className="text-[10px]">
-              200 eventos
-            </Badge>
-          </div>
-          <Typography variant="muted" className="text-xs">
-            Dispara 200 eventos/s instantâneos para validação de throughput e
-            batching rAF.
-          </Typography>
-          <Button
-            variant="default"
-            onClick={handleBurst}
-            disabled={loadingBurst}
-            className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
-          >
-            {loadingBurst ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Disparando...
-              </>
-            ) : (
-              <>
-                <Flame className="size-4" />
-                Disparar Rajada CA-11 (200 ev/s)
-              </>
-            )}
-          </Button>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="events-rate">Taxa de Eventos (ev/s)</Label>
-            <Input
-              id="events-rate"
-              type="number"
-              min={1}
-              max={100}
-              value={eventsPerSec}
-              onChange={(e) => setEventsPerSec(e.target.value)}
-              disabled={isRunningContinuous || loadingTraffic}
-            />
-          </div>
-
-          <Button
-            variant={isRunningContinuous ? 'destructive' : 'outline'}
-            onClick={handleToggleContinuous}
-            disabled={loadingTraffic}
-            className="gap-2"
-          >
-            {loadingTraffic ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : isRunningContinuous ? (
-              <>
-                <Square className="size-4" />
-                Parar Tráfego Contínuo
-              </>
-            ) : (
-              <>
-                <Play className="size-4" />
-                Iniciar Tráfego Contínuo
-              </>
-            )}
-          </Button>
-        </div>
+        <BurstTrafficSection
+          disabled={isSimulationDisabled}
+          loading={loadingBurst}
+          onBurst={handleBurst}
+        />
+        <ContinuousTrafficSection
+          disabled={isSimulationDisabled}
+          isRunning={isRunningContinuous}
+          loading={loadingTraffic}
+          eventsPerSec={eventsPerSec}
+          onEventsPerSecChange={setEventsPerSec}
+          onToggle={handleToggleContinuous}
+        />
+        <Separator className="my-1" />
+        <ManualActionsSection
+          isAnyLoading={isAnyLoading}
+          loadingAction={loadingAction}
+          manualUser={manualUser}
+          setManualUser={setManualUser}
+          giftUnits={giftUnits}
+          setGiftUnits={setGiftUnits}
+          onVote={handleManualVote}
+          onGift={handleManualGift}
+          isInterval={isInterval}
+          pendingCount={pendingCount}
+          onClearPending={handleClearPending}
+          loadingClearPending={loadingClearPending}
+        />
       </CardContent>
     </Card>
   );

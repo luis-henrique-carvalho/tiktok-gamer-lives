@@ -28,17 +28,19 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     ...(options?.headers as Record<string, string> | undefined),
   };
 
-  if (
-    options?.body !== undefined &&
-    options?.body !== null &&
-    !headers['Content-Type']
-  ) {
+  const isMutation =
+    options?.method === 'POST' ||
+    options?.method === 'PUT' ||
+    options?.method === 'PATCH';
+
+  if (isMutation && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
   const response = await fetch(url, {
     ...options,
     headers,
+    body: isMutation && options?.body === undefined ? '{}' : options?.body,
   });
 
   if (!response.ok) {
@@ -164,4 +166,57 @@ export async function burstSimulator(
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export interface ManualActionResult {
+  success: boolean;
+  sessionId?: string;
+  team?: 'A' | 'B';
+  units?: number;
+  status?: string;
+  reason?: string;
+  message?: string;
+  result?: {
+    success?: boolean;
+    status?: string;
+    reason?: string;
+  };
+}
+
+export async function sendManualVote(params: {
+  sessionId?: string;
+  team: 'A' | 'B';
+  userId?: string;
+  userName?: string;
+}): Promise<ManualActionResult> {
+  return request<ManualActionResult>('/api/simulator/vote', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function sendManualGift(params: {
+  sessionId?: string;
+  team: 'A' | 'B';
+  units?: number;
+  userId?: string;
+  userName?: string;
+  resourceKey?: string;
+}): Promise<ManualActionResult> {
+  return request<ManualActionResult>('/api/simulator/gift', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function clearPendingContributions(
+  sessionId: string,
+): Promise<{ success: boolean; sessionId: string }> {
+  return request<{ success: boolean; sessionId: string }>(
+    '/api/simulator/clear-pending',
+    {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    },
+  );
 }

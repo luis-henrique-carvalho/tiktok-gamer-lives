@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { AxBGameEngine, createInitialAxBState } from '../engine.js';
 import { DEFAULT_AXB_CONFIG } from '../constants.js';
 import type {
-  AxBCommand,
   AxBConfig,
   AxBGiftCommand,
   AxBIntervalExpiredCommand,
@@ -760,6 +759,46 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
       expect(result.nextState.roundStatus).toBe('INTERVAL');
       expect(result.nextState.currentRound).toBe(1);
     });
+
+    it('auto-advances expired interval when a new command arrives after intervalDurationMs has passed', () => {
+      const expiredIntervalState: AxBState = {
+        ...createInitialAxBState(),
+        currentRound: 1,
+        roundStatus: 'INTERVAL',
+        score: { teamA: 1018, teamB: 750 },
+        history: [
+          {
+            roundNumber: 1,
+            winner: 'A',
+            finalScore: { teamA: 1018, teamB: 750 },
+            completedAt: 10000,
+          },
+        ],
+        pendingContributions: [],
+      };
+
+      // 6000ms later (> 5000ms intervalDurationMs), user casts a vote in Round 2
+      const voteCmd: AxBVoteCommand = {
+        type: 'VOTE',
+        team: 'A',
+        userId: 'round-2-voter',
+        timestamp: 16000,
+      };
+
+      const result = engine.applyCommand(
+        expiredIntervalState,
+        voteCmd,
+        { timestamp: 16000, isPaused: false },
+        DEFAULT_AXB_CONFIG,
+      );
+
+      expect(result.status).toBe('APPLIED');
+      expect(result.nextState.currentRound).toBe(2);
+      expect(result.nextState.roundStatus).toBe('ACTIVE');
+      expect(result.nextState.score.teamA).toBe(1); // 0 + 1 from the vote!
+      expect(result.nextState.score.teamB).toBe(0);
+      expect(result.nextState.history).toHaveLength(1);
+    });
   });
 
   describe('Edge cases and fallbacks', () => {
@@ -777,20 +816,86 @@ describe('AxBGameEngine (TDD Red -> Green)', () => {
       expect(result.nextState.score.teamA).toBe(1);
     });
 
-    it('ignores unknown command safely', () => {
-      const initialState = createInitialAxBState();
-      const unknownCmd = {
-        type: 'UNKNOWN_COMMAND_TYPE',
-        timestamp: 10000,
-      } as unknown as AxBCommand;
+    it('clears pending contributions on CLEAR_PENDING command', () => {
+      const stateWithPending: AxBState = {
+        ...createInitialAxBState(),
+        pendingContributions: [
+          {
+            type: 'GIFT',
+            team: 'A',
+            pointsPerUnit: 10,
+            resourceKey: 'tiktok:gift:5655',
+            units: 5,
+            timestamp: 10000,
+          },
+        ],
+      };
 
       const result = engine.applyCommand(
-        initialState,
-        unknownCmd,
+        stateWithPending,
+        { type: 'CLEAR_PENDING', timestamp: 10500 },
         activeContext,
       );
-      expect(result.status).toBe('IGNORED');
-      expect(result.reason).toBe('UNKNOWN_COMMAND');
+
+      expect(result.status).toBe('APPLIED');
+      expect(result.nextState.pendingContributions).toEqual([]);
+    });
+
+    it('reschedules remaining timer when resuming during active interval', () => {
+      const intervalState: AxBState = {
+        ...createInitialAxBState(),
+        currentRound: 1,
+        roundStatus: 'INTERVAL',
+        history: [
+          {
+            roundNumber: 1,
+            winner: 'A',
+            finalScore: { teamA: 1000, teamB: 500 },
+            completedAt: 10000,
+          },
+        ],
+      };
+
+      // Resumed after 2000ms (3000ms remaining of 5000ms)
+      const result = engine.applyCommand(
+        intervalState,
+        { type: 'RESUME', timestamp: 12000 },
+        { isPaused: false, timestamp: 12000 },
+      );
+
+      expect(result.status).toBe('APPLIED');
+      expect(result.nextState.roundStatus).toBe('INTERVAL');
+      expect(result.timerRequests).toHaveLength(1);
+      expect(result.timerRequests?.[0].delayMs).toBe(3000);
+      expect(result.timerRequests?.[0].type).toBe('INTERVAL_EXPIRED');
+    });
+
+    it('expires interval immediately when resuming after interval duration has elapsed', () => {
+      const intervalState: AxBState = {
+        ...createInitialAxBState(),
+        currentRound: 1,
+        roundStatus: 'INTERVAL',
+        history: [
+          {
+            roundNumber: 1,
+            winner: 'A',
+            finalScore: { teamA: 1000, teamB: 500 },
+            completedAt: 10000,
+          },
+        ],
+      };
+
+      // Resumed after 6000ms (more than 5000ms)
+      const result = engine.applyCommand(
+        intervalState,
+        { type: 'RESUME', timestamp: 16000 },
+        { isPaused: false, timestamp: 16000 },
+      );
+
+      expect(result.status).toBe('APPLIED');
+      expect(result.nextState.roundStatus).toBe('ACTIVE');
+      expect(result.nextState.currentRound).toBe(2);
+      expect(result.nextState.score).toEqual({ teamA: 0, teamB: 0 });
     });
   });
 });
